@@ -1,0 +1,1 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>html-minifier</title><style type="text/css">body{font-size:14pt}</style></head><body>hello world</body></html><script type="text/javascript">function hello(){console.log("hello world")}</script>
