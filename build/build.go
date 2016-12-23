@@ -29,14 +29,35 @@ import (
 	"github.com/lessos/lpm/lpmtypes"
 )
 
+// yum install npm optipng
+// npm install uglify-js -g
+// npm install clean-css -g
+// npm install html-minifier -g
 var (
-	build_dir = ".build"
-	jscp      = "/usr/bin/uglifyjs %s -c -m -o %s"
-	csscp     = "/usr/bin/uglifycss %s > %s"
-	htmlcp    = "/usr/bin/html-minifier --remove-comments " +
-		"--collapse-whitespace --minify-js --minify-css %s -o %s"
-	filecp  = "cp -rpf %s %s"
-	cpfiles types.ArrayString
+	build_dir     = ".build"
+	jscp          = "uglifyjs %s -c -m -o %s"
+	csscp         = "cleancss --skip-rebase %s -o %s"
+	htmlcp        = "html-minifier -c /tmp/html-minifier.conf %s -o %s"
+	pngcp         = "optipng -o7 %s -out %s"
+	filecp        = "cp -rpf %s %s"
+	cpfiles       types.ArrayString
+	htmlcp_config = `{
+  "collapseWhitespace": true,
+  "ignoreCustomFragments": [
+    "<#[\\s\\S]*?#>",
+    "<%[\\s\\S]*?%>",
+    "<\\?[\\s\\S]*?\\?>",
+    "{{.*?}}",
+    "{\\[.*?\\]}"
+  ],
+  "minifyCSS": true,
+  "minifyJS": false,
+  "processScripts": [
+    "text/html"
+  ],
+  "removeAttributeQuotes": false,
+  "removeComments": true
+}`
 )
 
 func Cmd() error {
@@ -105,6 +126,19 @@ func Cmd() error {
 
 	os.Mkdir(build_dir, 0755)
 
+	cfp, err := os.OpenFile("/tmp/html-minifier.conf", os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer cfp.Close()
+
+	cfp.Seek(0, 0)
+	cfp.Truncate(0)
+
+	if _, err := cfp.Write([]byte(htmlcp_config)); err != nil {
+		return err
+	}
+
 	if err := _cmd(cfg.Get("build").String()); err != nil {
 		return err
 	}
@@ -127,6 +161,11 @@ func Cmd() error {
 	subfiles = _lookup_files(cfg.Get("html_compress").String(), ".tpl")
 	if err := _compress(subfiles, htmlcp); err != nil {
 		return fmt.Errorf("HtmlCompress %s", err.Error())
+	}
+
+	subfiles = _lookup_files(cfg.Get("png_compress").String(), ".png")
+	if err := _compress(subfiles, pngcp); err != nil {
+		return fmt.Errorf("PngCompress %s", err.Error())
 	}
 
 	subfiles = _lookup_files(cfg.Get("files").String(), "")
@@ -242,6 +281,11 @@ func _compress(ls types.ArrayString, cmd_str string) error {
 	for _, file := range ls {
 
 		dstfile := fmt.Sprintf("./%s/%s", build_dir, file)
+
+		if _, err := os.Stat(dstfile); err == nil {
+			continue
+		}
+
 		if err := os.MkdirAll(filepath.Dir(dstfile), 0755); err != nil {
 			return err
 		}
@@ -253,6 +297,7 @@ func _compress(ls types.ArrayString, cmd_str string) error {
 			fmt.Printf("FILE ER (%s) %s %s\n", file, err.Error(), string(out))
 
 			if _, err := exec.Command("cp", "-rpf", file, dstfile).Output(); err != nil {
+				os.Remove(dstfile)
 				return err
 			} else {
 				fmt.Println("FILE ER-OK", file)
