@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package build
+package build // import "code.hooto.com/lessos/lospack-cli/internal/cmd/build"
 
 import (
 	"fmt"
@@ -25,8 +25,9 @@ import (
 	"github.com/lessos/lessgo/encoding/json"
 	"github.com/lessos/lessgo/types"
 
-	"github.com/lessos/lpm/internal/ini"
-	"github.com/lessos/lpm/lpmtypes"
+	"code.hooto.com/lessos/lospack-cli/internal/cliflags"
+	"code.hooto.com/lessos/lospack-cli/internal/ini"
+	"code.hooto.com/lessos/lospack/lpapi"
 )
 
 // yum install npm optipng
@@ -34,13 +35,20 @@ import (
 // npm install clean-css -g
 // npm install html-minifier -g
 var (
-	build_dir     = ".build"
-	jscp          = "uglifyjs %s -c -m -o %s"
-	csscp         = "cleancss --skip-rebase %s -o %s"
-	htmlcp        = "html-minifier -c /tmp/html-minifier.conf %s -o %s"
-	pngcp         = "optipng -o7 %s -out %s"
-	filecp        = "cp -rpf %s %s"
-	cpfiles       types.ArrayString
+	build_dir = ".build"
+	build_src = ".build_src"
+	spec_json = "lospack.json"
+	jscp      = "uglifyjs %s -c -m -o %s"
+	csscp     = "cleancss --skip-rebase %s -o %s"
+	htmlcp    = "html-minifier -c /tmp/html-minifier.conf %s -o %s"
+	pngcp     = "optipng -o7 %s -out %s"
+	filecp    = "cp -rpf %s %s"
+	cpfiles   types.ArrayString
+	ignores   = types.ArrayString{
+		".git",
+		".gitignore",
+		".gitmodules",
+	}
 	htmlcp_config = `{
   "collapseWhitespace": true,
   "ignoreCustomFragments": [
@@ -115,15 +123,95 @@ func Cmd() error {
 		}
 	}
 
-	cfg, err := ini.ConfigIniParse("./misc/lpm/lpm.spec")
-	if err != nil {
-		if cfg, err = ini.ConfigIniParse("./lpm.spec"); err != nil {
-			return fmt.Errorf("No SPEC Found in `misc/lpm/lpm.spec`")
+	var (
+		err        error
+		cfg        *ini.ConfigIni
+		spec_files = []string{
+			"./.lospack/lospack.spec",
+			"./misc/lospack/lospack.spec",
+			"./lospack.spec",
+		}
+	)
+
+	if v, ok := cliflags.Value("spec"); ok {
+		spec_files = append([]string{v.String()}, spec_files...)
+	}
+
+	// tpl, err := template.New("s").Parse(etr.ExecStart)
+	for _, v := range spec_files {
+
+		if cfg, err = ini.ConfigIniParse(v); err == nil {
+			break
 		}
 	}
 
-	cfg.Params("buildroot", build_dir)
+	if cfg == nil {
+		return fmt.Errorf("No SPEC File Found")
+	}
 
+	if v, ok := cliflags.Value("version"); ok {
+		cfg.Set("project.version", v.String())
+	}
+
+	if v, ok := cliflags.Value("release"); ok {
+		cfg.Set("project.release", v.String())
+	} else {
+		cfg.Set("project.release", "1")
+	}
+
+	//
+	pkg := lpapi.PackageSpec{
+		Name:     cfg.Get("project.name").String(),
+		Version:  types.Version(cfg.Get("project.version").String()),
+		Release:  types.Version(cfg.Get("project.release").String()),
+		PkgOS:    "all", // dist,
+		PkgArch:  "src", // arch,
+		Vendor:   cfg.Get("project.vendor").String(),
+		Homepage: cfg.Get("project.homepage").String(),
+		Created:  types.MetaTimeNow(),
+	}
+	groups := strings.Split(cfg.Get("project.groups").String(), ",")
+	for _, v := range groups {
+		pkg.Groups.Insert(v)
+	}
+
+	fmt.Printf(`building
+    package: %s
+    version: %s
+    release: %s
+    os:      %s
+    arch:    %s
+    vendor:  %s
+`,
+		pkg.Name,
+		pkg.Version,
+		pkg.Release,
+		dist,
+		arch,
+		pkg.Vendor,
+	)
+
+	//
+	if err := _build_source(cfg); err == nil {
+
+		//
+		if err := json.EncodeToFile(pkg, build_src+"/.lospack/"+spec_json, "  "); err != nil {
+			return err
+		}
+
+		if err := _tar_compress(
+			build_src,
+			fmt.Sprintf("%s-%s-%s.all.src", pkg.Name, pkg.Version, pkg.Release),
+		); err != nil {
+			return err
+		}
+	}
+
+	//
+	pkg.PkgOS = dist
+	pkg.PkgArch = arch
+
+	cfg.Params("buildroot", build_dir)
 	os.Mkdir(build_dir, 0755)
 
 	cfp, err := os.OpenFile("/tmp/html-minifier.conf", os.O_RDWR|os.O_CREATE, 0644)
@@ -173,28 +261,24 @@ func Cmd() error {
 		return fmt.Errorf("FileCopy %s", err.Error())
 	}
 
-	pkg := lpmtypes.Package{
-		Meta: types.InnerObjectMeta{
-			Name:    cfg.Get("project.name").String(),
-			Created: types.MetaTimeNow(),
-			Updated: types.MetaTimeNow(),
-		},
-		Vendor:   cfg.Get("project.vendor").String(),
-		Version:  cfg.Get("project.version").String(),
-		Release:  "1",
-		PkgArch:  arch,
-		PkgOS:    dist,
-		Homepage: cfg.Get("project.homepage").String(),
-	}
-	if err := json.EncodeToFile(pkg, build_dir+"/lpm.json", "  "); err != nil {
+	os.MkdirAll(build_dir+"/.lospack", 0755)
+
+	//
+	if err := json.EncodeToFile(pkg, build_dir+"/.lospack/"+spec_json, "  "); err != nil {
 		return err
 	}
 
-	pkg_name := fmt.Sprintf("%s-%s-%s.%s.%s", pkg.Meta.Name, pkg.Version, pkg.Release, dist, arch)
+	return _tar_compress(
+		build_dir,
+		fmt.Sprintf("%s-%s-%s.%s.%s", pkg.Name, pkg.Version, pkg.Release, dist, arch),
+	)
+}
+
+func _tar_compress(dir, pkg_name string) error {
 
 	tar := `
-cd ` + build_dir + `
-tar -cvf ` + pkg_name + `.tar *
+cd ` + dir + `
+tar -cvf ` + pkg_name + `.tar .??* *
 xz -z -e -9 -v ` + pkg_name + `.tar
 mv ` + pkg_name + `.tar.xz ../` + pkg_name + `.txz
 `
@@ -202,7 +286,54 @@ mv ` + pkg_name + `.tar.xz ../` + pkg_name + `.txz
 		return err
 	}
 
-	fmt.Println("OK:", pkg_name+".txz")
+	fmt.Printf("OK\n    %s.txz\n\n", pkg_name)
+
+	return nil
+}
+
+func _build_source(cfg *ini.ConfigIni) error {
+
+	out, _ := exec.Command("git", "ls-files").Output()
+	ls := strings.Split(strings.TrimSpace(string(out)), "\n")
+
+	for _, file := range ls {
+
+		info, err := os.Lstat(file)
+		if err != nil {
+			continue
+		}
+
+		if info.IsDir() {
+			continue
+		}
+
+		dstfile := fmt.Sprintf("./%s/%s", build_src, file)
+
+		if _, fname := filepath.Split(dstfile); ignores.Contain(fname) {
+			continue
+		}
+
+		if _, err := os.Stat(dstfile); err == nil {
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(dstfile), 0755); err != nil {
+			return err
+		}
+
+		if _, err := exec.Command("cp", "-rpf", file, dstfile).Output(); err != nil {
+			os.Remove(dstfile)
+			return err
+		}
+	}
+
+	spec_file := fmt.Sprintf("./%s/.lospack/lospack.spec", build_src)
+	if err := os.MkdirAll(filepath.Dir(spec_file), 0755); err != nil {
+		return err
+	}
+	if _, err := exec.Command("cp", "-rpf", cfg.File, spec_file).Output(); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -215,15 +346,18 @@ func _lookup_files(txt, suffix string) types.ArrayString {
 
 	for _, v := range ls {
 
-		v = filepath.Clean(strings.TrimSpace(v))
-
-		fps, err := os.Stat(v)
-		if err != nil {
+		v = strings.TrimSpace(v)
+		if v == "" {
 			continue
 		}
 
-		if strings.HasSuffix(v, ".gitignore") ||
-			strings.HasSuffix(v, ".git") {
+		v = filepath.Clean(v)
+		if _, fname := filepath.Split(v); ignores.Contain(fname) {
+			continue
+		}
+
+		fps, err := os.Stat(v)
+		if err != nil {
 			continue
 		}
 
@@ -256,9 +390,9 @@ func _lookup_files(txt, suffix string) types.ArrayString {
 				continue
 			}
 
-			if strings.HasSuffix(fv, ".gitignore") ||
-				strings.HasSuffix(fv, ".git") ||
-				strings.Contains(fv, ".git/") {
+			_, fvfile := filepath.Split(fv)
+
+			if ignores.Contain(fvfile) || strings.Contains(fv, ".git/") {
 				continue
 			}
 

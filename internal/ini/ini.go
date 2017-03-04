@@ -1,8 +1,23 @@
-package ini
+// Copyright 2016 lessos Author, All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package ini // import "code.hooto.com/lessos/lospack-cli/internal/ini"
 
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"os"
 	"strings"
 	"sync"
@@ -18,7 +33,7 @@ var (
 type ConfigIni struct {
 	mu       sync.Mutex
 	parsed   bool
-	file     string
+	File     string
 	data     types.Labels
 	replaces map[string]string
 }
@@ -32,7 +47,7 @@ func ConfigIniParse(file string) (*ConfigIni, error) {
 	defer fp.Close()
 
 	return &ConfigIni{
-		file:     file,
+		File:     file,
 		replaces: map[string]string{},
 	}, nil
 }
@@ -46,7 +61,7 @@ func (cfg *ConfigIni) parse() {
 		return
 	}
 
-	fp, err := os.Open(cfg.file)
+	fp, err := os.Open(cfg.File)
 	if err != nil {
 		return
 	}
@@ -86,7 +101,7 @@ func (cfg *ConfigIni) parse() {
 			if section != section_open {
 
 				if tag_open != "" {
-					cfg.data.Set(section_open+"/"+tag_open, cfg.value_render(tag_value))
+					cfg.data.Set(section_open+"/"+tag_open, tag_value)
 					tag_open, tag_value = "", ""
 				}
 			}
@@ -101,7 +116,7 @@ func (cfg *ConfigIni) parse() {
 		if bytes.HasPrefix(line, []byte{'%'}) {
 
 			if tag_open != "" {
-				cfg.data.Set(section_open+"/"+tag_open, cfg.value_render(tag_value))
+				cfg.data.Set(section_open+"/"+tag_open, tag_value)
 			}
 
 			if len(line) > 1 {
@@ -132,14 +147,16 @@ func (cfg *ConfigIni) parse() {
 			val := string(bytes.TrimSpace(kv[1]))
 
 			if len(key) > 0 && len(val) > 0 {
-				cfg.data.Set(section_open+"/"+key, cfg.value_render(val))
+				cfg.data.Set(section_open+"/"+key, val)
 			}
 		}
 	}
 
 	if tag_open != "" {
-		cfg.data.Set(section_open+"/"+tag_open, cfg.value_render(tag_value))
+		cfg.data.Set(section_open+"/"+tag_open, tag_value)
 	}
+
+	cfg.parsed = true
 }
 
 func (cfg *ConfigIni) Params(args ...string) {
@@ -174,5 +191,26 @@ func (cfg *ConfigIni) Get(args ...string) types.Bytex {
 		val, _ = cfg.data.Get(args[0] + "/" + args[1])
 	}
 
+	if len(val) > 0 {
+		val = types.Bytex([]byte(cfg.value_render(val.String())))
+	}
+
 	return val
+}
+
+func (cfg *ConfigIni) Set(args ...string) error {
+
+	if len(args) < 2 {
+		return errors.New("Invalid Args")
+	}
+
+	cfg.parse()
+
+	if len(args) == 3 {
+		cfg.data.Set(args[0]+"/"+args[1], args[2])
+	} else {
+		cfg.data.Set("main/"+args[0], args[1])
+	}
+
+	return nil
 }

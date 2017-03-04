@@ -12,29 +12,47 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package cliflags // import "code.hooto.com/lessos/lospack-cli/internal/cliflags"
 
 import (
-	"log"
 	"os"
 
-	cmd_build "code.hooto.com/lessos/lospack-cli/internal/cmd/build"
+	"github.com/lessos/lessgo/types"
 )
 
-func main() {
+var (
+	args_kv = map[string]types.Bytex{}
+)
+
+func init() {
 
 	if len(os.Args) < 2 {
-		log.Fatal("No Args Found")
+		return
 	}
 
-	switch os.Args[1] {
+	for i, k := range os.Args {
 
-	case "build":
-		if err := cmd_build.Cmd(); err != nil {
-			log.Fatal(err)
+		if k[0] != '-' || len(k) < 2 {
+			continue
 		}
 
-	default:
-		log.Fatalf("No Command Found (%s)", os.Args[1])
+		v := ""
+
+		if len(os.Args) <= i+1 {
+			continue
+		}
+
+		v = os.Args[i+1]
+
+		args_kv[k[1:]] = types.Bytex([]byte(v))
 	}
+}
+
+func Value(key string) (types.Bytex, bool) {
+
+	if v, ok := args_kv[key]; ok {
+		return v, ok
+	}
+
+	return nil, false
 }
