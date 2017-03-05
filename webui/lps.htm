@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+  <title>PGs</title>
+  <script src="/lps/ui/lessui/js/sea.js"></script>
+  <script src="/lps/ui/js/main.js"></script>
+  <style>
+  body {
+    padding: 10px !important;
+	min-width: 600px !important;
+  }
+  </style>
+</head>
+
+<body id="body-content">
+<style>
+._lps_loading {
+  margin: 0;
+  padding: 30px 40px;
+  font-size: 48px;
+  color: #000;
+}
+</style>
+<div class="_lps_loading">loading</div>
+</body>
+</html>
+
+<script>
+
+    seajs.config({
+        base: lpLps.base,
+        alias: {
+            ep: "ui/lessui/js/eventproxy.js"
+        },
+    });
+
+    seajs.use([
+        "ui/js/jquery.js",
+        "ui/lessui/js/browser-detect.js",
+    ], function() {
+
+        var browser = BrowserDetect.browser;
+        var version = BrowserDetect.version;
+        var OS      = BrowserDetect.OS;
+
+        if (!((browser == 'Chrome' && version >= 35)
+            || (browser == 'Firefox' && version >= 35.0)
+            || (browser == 'Safari' && version >= 7.0 && OS == 'Mac'))) {
+            return alert("unsupported browser or version");
+        }
+
+        seajs.use([
+            "ui/bs/3.3/css/bootstrap.css",
+            "ui/bs/3.3/js/bootstrap.js",
+            "ui/lessui/css/lessui.css",
+            "ui/lessui/js/lessui.js",
+            "ui/purecss/css/pure.css",    
+            "ui/css/main.css?_="+ Math.random(),
+        ], function() {
+
+		    l4i.debug = true;
+            lpLps.Index({
+                dstid: "body-content",
+            });
+        });
+    });
+
+</script>

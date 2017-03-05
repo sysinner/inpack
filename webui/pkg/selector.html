@@ -1,0 +1,121 @@
+
+<style type="text/css">
+._list_query_input {
+    padding: 5px 5px 5px 30px;
+    background: url(/pandora/~/pandora/img/search-16.png) no-repeat 8px; 
+    width: 300px;
+}
+</style>
+
+<table width="100%">
+  <tr>
+    <td>
+      <form id="lps-pkgls-s6r-qry" action="#" class="form-inlines">
+        <input id="lps-pkgls-s6r-qry-name" type="hidden" value="">
+        <input id="lps-pkgls-s6r-qry-text" type="text"
+          class="form-control _list_query_input" 
+          placeholder="Press Enter to Search" 
+          value="">
+      </form>
+    </td>
+  </tr>
+</table>
+
+<table class="table table-hover">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Version</th>
+      <th>
+        <div id="lps-pkgls-s6r-chs" class="dropdown">
+          <a id="lps-pkgls-s6r-chs-qryid" class="dropdown-toggle" data-toggle="dropdown" href="#">
+            <span id="lps-pkgls-s6r-chs-qrydp">Channels</span>
+          </a>
+        </div>
+      </th>
+      <th>
+        <div id="lps-pkgls-s6r-grpdev" class="dropdown">
+          <a id="lps-pkgls-s6r-grpdev-qryid" class="dropdown-toggle" data-toggle="dropdown" href="#">
+            <span id="lps-pkgls-s6r-grpdev-qrydp">Groups</span>
+          </a>
+        </div>
+      </th>
+      <th></th>
+    </tr>
+  </thead>
+
+  <tbody id="lps-pkgls-s6r"></tbody>
+
+</table>
+
+<div id="lps-pkgls-s6r-empty-alert" class="alert alert-warning hide">No more results ...</div>
+
+<script id="lps-pkgls-s6r-chs-tpl" type="text/html">
+  <a id="lps-pkgls-s6r-chs-qryid" class="dropdown-toggle" data-toggle="dropdown" href="#{[=it.qry_ch]}">
+    <span id="lps-pkgls-s6r-chs-qrydp">{[=it.qry_ch_dp]}</span> <span class="caret"></span>
+  </a>  
+  <ul class="dropdown-menu">
+    <li><a class="ch-item" href="#" label="Channels">All Channels</a></li>
+    {[~it.channels :v]}
+    <li><a class="ch-item" href="#{[=v.meta.id]}" label="{[=v.meta.name]}">{[=v.vendor_name]} / {[=v.meta.name]}</a></li>
+    {[~]}
+  </ul>
+</script>
+
+<script id="lps-pkgls-s6r-grpdev-tpl" type="text/html">
+  <a id="lps-pkgls-s6r-grpdev-qryid" class="dropdown-toggle" data-toggle="dropdown" href="#{[=it.qry_grpdev]}">
+    <span id="lps-pkgls-s6r-grpdev-qrydp">{[=it.qry_grpdev_dp]}</span> <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu">
+    <li><a class="grpdev-item" href="#" label="Groups">All Groups</a></li>
+    {[~it.grpdev :v]}
+    <li><a class="grpdev-item" href="#{[=v.key]}" label="{[=v.name]}">{[=v.name]}</a></li>
+    {[~]}
+  </ul>
+</script>
+
+<script id="lps-pkgls-s6r-tpl" type="text/html">
+  {[~it :v]}
+    <tr>
+      <td style="width:35%;">{[=v.meta.name]}</td>
+      <td style="width:20%;">{[=v.version]}</td>
+      <td>{[=v.channel.meta.name]}</td>
+      <td>
+        {[~v.group_dev :gv]}
+        <div>{[=gv.name]}</div>
+        {[~]}
+      </td>
+      <td>
+        <a class="pkg-item" href="#{[=v.meta.id]}">Select</a>
+      </td>
+    </tr>
+  {[~]}
+</script>
+
+<script type="text/javascript">
+
+$("#lps-pkgls-s6r-qry").submit(function(event) {
+    event.preventDefault();
+    lpLps.PackageListRefresh("lps-pkgls-s6r");
+});
+
+$("#lps-pkgls-s6r-chs").on("click", ".ch-item", function() {
+    $("#lps-pkgls-s6r-chs-qryid").attr("href", $(this).attr("href"));
+    $("#lps-pkgls-s6r-chs-qrydp").text($(this).attr("label"));
+    lpLps.PackageListRefresh("lps-pkgls-s6r");
+});
+
+$("#lps-pkgls-s6r-grpdev").on("click", ".grpdev-item", function() {
+    $("#lps-pkgls-s6r-grpdev-qryid").attr("href", $(this).attr("href"));
+    $("#lps-pkgls-s6r-grpdev-qrydp").text($(this).attr("label"));
+    lpLps.PackageListRefresh("lps-pkgls-s6r");
+});
+
+$("#lps-pkgls-s6r").on("click", ".pkg-item", function() {
+    var id = $(this).attr("href").substr(1);
+    if (l4iModal.CurOptions.callback !== undefined) {
+        l4iModal.CurOptions.callback(null, id);
+    }
+});
+
+</script>

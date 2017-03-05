@@ -18,7 +18,7 @@ import (
 	"log"
 	"os"
 
-	cmd_build "code.hooto.com/lessos/lospack-cli/internal/cmd/build"
+	cmd_build "code.hooto.com/lessos/lospack/internal/cmd/build"
 )
 
 func main() {

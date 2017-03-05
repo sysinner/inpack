@@ -1,0 +1,54 @@
+<table class="table table-hover">
+  <thead>
+    <tr>
+      <th>Channel</th>
+      <th>Vendor</th>
+      <th>Packages</th>
+      <th>Updated</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="lps-channells"></tbody>
+</table>
+
+<table width="100%">
+  <tr>
+    <td>
+      <button type="button" 
+        class="btn btn-primary btn-sm" 
+        onclick="lpLps.ChannelSet()">
+        New Package Channel
+      </button>
+      <!--<button type="button" 
+        class="btn btn-primary btn-sm" 
+        onclick="lpLps.ChannelImport()">
+        Import Channels from Upstream Vendor
+      </button>-->
+    </td>
+
+    <td>
+     
+    </td>
+  </tr>
+</table>
+
+<script id="lps-channells-tpl" type="text/html">  
+  {[~it.channels :v]}
+    <tr>
+      <td>{[=v.meta.name]}</td>
+      <td>
+        {[if (v.upstream == "1") { ]}
+        <a href="{[=v.vendor_site]}" target="_blank">{[=v.vendor_name]}</a></td>
+        {[ } else { ]}
+          {[=v.vendor_name]}
+        {[ } ]}
+      <td>{[=v.packages]}</td>
+      <td>{[=l4i.MetaTimeParseFormat(v.meta.updated, "Y-m-d")]}</td>
+      <td align="right">
+	    <button class="btn btn-default btn-xs" onclick="lpLps.ChannelSet('{[=v.meta.id]}')">
+		  Setting
+		</button>
+    </tr>
+  {[~]}
+</script>
+

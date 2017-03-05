@@ -1,4 +1,4 @@
-// Copyright 2016 lessos Author, All rights reserved.
+// Copyright 2015 lessOS.com, All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,47 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cliflags // import "code.hooto.com/lessos/lospack/internal/cliflags"
+package v1 // import "code.hooto.com/lessos/lospack/websrv/v1"
 
 import (
-	"os"
-
+	"github.com/lessos/lessgo/httpsrv"
 	"github.com/lessos/lessgo/types"
+
+	"code.hooto.com/lessos/lospack/lpapi"
 )
 
-var (
-	args_kv = map[string]types.Bytex{}
-)
-
-func init() {
-
-	if len(os.Args) < 2 {
-		return
-	}
-
-	for i, k := range os.Args {
-
-		if k[0] != '-' || len(k) < 2 {
-			continue
-		}
-
-		v := ""
-
-		if len(os.Args) <= i+1 {
-			continue
-		}
-
-		v = os.Args[i+1]
-
-		args_kv[k[1:]] = types.Bytex([]byte(v))
-	}
+type Group struct {
+	*httpsrv.Controller
 }
 
-func Value(key string) (types.Bytex, bool) {
+func (c Group) ListAction() {
 
-	if v, ok := args_kv[key]; ok {
-		return v, ok
+	ls := lpapi.PackageGroupList{
+		TypeMeta: types.TypeMeta{
+			Kind: "PackageGroupList",
+		},
+		Items: lpapi.PackageGroups,
 	}
 
-	return nil, false
+	c.Response.Out.Header().Set("Access-Control-Allow-Origin", "*")
+
+	c.RenderJson(ls)
 }

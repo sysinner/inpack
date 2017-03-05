@@ -1,0 +1,9 @@
+#!/bin/bash
+
+rm -f ./bin/lospackd
+
+time go build -ldflags "-s -w" -o ./bin/lospackd ./cmd/lospackd/main.go
+
+./bin/lospackd -logtostderr=true
+
+

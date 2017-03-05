@@ -1,3 +1,9 @@
-.build
 *.txz
 doc/*
+var/*
+bin/*
+etc/*
+.build
+webui/lessui
+webui/bs
+webui/purecss
