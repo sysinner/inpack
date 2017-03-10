@@ -1,4 +1,4 @@
-// Copyright 2015 lessOS.com, All rights reserved.
+// Copyright 2016 lessos Authors, All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,8 +21,9 @@ import (
 	"github.com/lessos/lessgo/httpsrv"
 	"github.com/lessos/lessgo/types"
 
-	"code.hooto.com/lessos/lospack/server/data"
 	"code.hooto.com/lessos/lospack/lpapi"
+	"code.hooto.com/lessos/lospack/server/data"
+	"code.hooto.com/lynkdb/iomix/skv"
 )
 
 var (
@@ -39,14 +40,16 @@ func (c Channel) ListAction() {
 	sets := lpapi.PackageChannelList{}
 	defer c.RenderJson(&sets)
 
-	if rs := data.Data.ObjectScan("channel/", "", "", 100); rs.OK() {
+	if rs := data.Data.PvScan("channel/", "", "", 100); rs.OK() {
 
-		rs.KvEach(func(key, value types.Bytex) {
+		rs.KvEach(func(entry *skv.ResultEntry) int {
 
 			var set lpapi.PackageChannel
-			if err := value.JsonDecode(&set); err == nil {
+			if err := entry.Decode(&set); err == nil {
 				sets.Items = append(sets.Items, set)
 			}
+
+			return 0
 		})
 	}
 
@@ -66,7 +69,7 @@ func (c Channel) EntryAction() {
 		return
 	}
 
-	rs := data.Data.ObjectGet("channel/" + c.Params.Get("id"))
+	rs := data.Data.PvGet("channel/" + c.Params.Get("id"))
 	if !rs.OK() {
 		set.Error = &types.ErrorMeta{
 			Code:    "404",
@@ -75,7 +78,7 @@ func (c Channel) EntryAction() {
 		return
 	}
 
-	if err := rs.JsonDecode(&set); err != nil {
+	if err := rs.Decode(&set); err != nil {
 		set.Error = &types.ErrorMeta{
 			Code:    "404",
 			Message: "Channel Not Found",
@@ -111,11 +114,11 @@ func (c Channel) SetAction() {
 		return
 	}
 
-	if rs := data.Data.ObjectGet("channel/" + set.Meta.ID); rs.OK() {
+	if rs := data.Data.PvGet("channel/" + set.Meta.ID); rs.OK() {
 
 		var prev lpapi.PackageChannel
 
-		if err := rs.JsonDecode(&prev); err != nil {
+		if err := rs.Decode(&prev); err != nil {
 			set.Error = &types.ErrorMeta{
 				Code:    "500",
 				Message: "Server Error",
@@ -127,11 +130,12 @@ func (c Channel) SetAction() {
 		prev.VendorAPI = set.VendorAPI
 		prev.VendorSite = set.VendorSite
 		prev.Meta.Updated = types.MetaTimeNow()
+		prev.Kind = ""
 
-		if rs := data.Data.ObjectPut("channel/"+set.Meta.ID, prev, nil); !rs.OK() {
+		if rs := data.Data.PvPut("channel/"+set.Meta.ID, prev, nil); !rs.OK() {
 			set.Error = &types.ErrorMeta{
 				Code:    "500",
-				Message: "Can not write to database: " + rs.Status,
+				Message: "Can not write to database: " + rs.Bytex().String(),
 			}
 			return
 		}
@@ -140,11 +144,12 @@ func (c Channel) SetAction() {
 
 		set.Meta.Created = types.MetaTimeNow()
 		set.Meta.Updated = types.MetaTimeNow()
+		set.Kind = ""
 
-		if rs := data.Data.ObjectPut("channel/"+set.Meta.ID, set, nil); !rs.OK() {
+		if rs := data.Data.PvPut("channel/"+set.Meta.ID, set, nil); !rs.OK() {
 			set.Error = &types.ErrorMeta{
 				Code:    "500",
-				Message: "Can not write to database: " + rs.Status,
+				Message: "Can not write to database: " + rs.Bytex().String(),
 			}
 			return
 		}
@@ -158,7 +163,7 @@ func (c Channel) DeleteAction() {
 	set := lpapi.PackageChannel{}
 	defer c.RenderJson(&set)
 
-	rs := data.Data.ObjectGet("channel/" + c.Params.Get("id"))
+	rs := data.Data.PvGet("channel/" + c.Params.Get("id"))
 	if !rs.OK() {
 
 		set.Error = &types.ErrorMeta{
@@ -168,7 +173,7 @@ func (c Channel) DeleteAction() {
 		return
 	}
 
-	if err := rs.JsonDecode(&set); err != nil {
+	if err := rs.Decode(&set); err != nil {
 		set.Error = &types.ErrorMeta{
 			Code:    "404",
 			Message: "Channel Not Found",
@@ -184,7 +189,7 @@ func (c Channel) DeleteAction() {
 		return
 	}
 
-	if rs := data.Data.ObjectDel("channel/" + c.Params.Get("id")); !rs.OK() {
+	if rs := data.Data.PvDel("channel/" + c.Params.Get("id")); !rs.OK() {
 		set.Error = &types.ErrorMeta{
 			Code:    "500",
 			Message: "Server Error",

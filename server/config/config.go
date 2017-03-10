@@ -1,4 +1,4 @@
-// Copyright 2015 lessOS.com, All rights reserved.
+// Copyright 2016 lessos Authors, All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"code.hooto.com/lessos/lessio/connector"
+	"code.hooto.com/lynkdb/iomix/connect"
 	"github.com/lessos/lessgo/encoding/json"
 	"github.com/lessos/lessgo/types"
 )
@@ -32,10 +32,10 @@ var (
 )
 
 type ConfigCommon struct {
-	SrvHttpPort   uint16                 `json:"srv_http_port,omitempty"`
-	PprofHttpPort uint16                 `json:"pprof_http_port,omitempty"`
-	IamServiceUrl string                 `json:"iam_service_url"`
-	IoConnectors  connector.MultiOptions `json:"io_connectors"`
+	SrvHttpPort   uint16                   `json:"srv_http_port,omitempty"`
+	PprofHttpPort uint16                   `json:"pprof_http_port,omitempty"`
+	IamServiceUrl string                   `json:"iam_service_url"`
+	IoConnectors  connect.MultiConnOptions `json:"io_connects"`
 }
 
 func Initialize(prefix string) error {
@@ -60,23 +60,23 @@ func Initialize(prefix string) error {
 	}
 
 	if opts := Config.IoConnectors.Options("database"); opts == nil {
-		Config.IoConnectors.SetOptions(connector.Options{
+		Config.IoConnectors.SetOptions(connect.ConnOptions{
 			Name:      "database",
-			Connector: "lessio/objectx",
+			Connector: "iomix/skv/Connector",
 		})
 	}
 
 	if opts := Config.IoConnectors.Options("storage"); opts == nil {
-		Config.IoConnectors.SetOptions(connector.Options{
+		Config.IoConnectors.SetOptions(connect.ConnOptions{
 			Name:      "storage",
-			Connector: "lessio/fs",
+			Connector: "iomix/fs/Connector",
 		})
 	}
 
 	for _, opts := range Config.IoConnectors {
 
 		if opts.Name == "database" &&
-			opts.Connector == "lessio/objectx" {
+			opts.Connector == "iomix/skv/Connector" {
 
 			opts.Driver = types.NewNameIdentifier("lessdb/sskv")
 
@@ -86,7 +86,7 @@ func Initialize(prefix string) error {
 		}
 
 		if opts.Name == "storage" &&
-			opts.Connector == "lessio/fs" {
+			opts.Connector == "iomix/fs/Connector" {
 
 			opts.Driver = types.NewNameIdentifier("local/fs")
 

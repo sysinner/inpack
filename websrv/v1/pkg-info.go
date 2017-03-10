@@ -1,4 +1,4 @@
-// Copyright 2015 lessOS.com, All rights reserved.
+// Copyright 2016 lessos Authors, All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,8 +18,9 @@ import (
 	"sort"
 	"strings"
 
-	"code.hooto.com/lessos/lospack/server/data"
 	"code.hooto.com/lessos/lospack/lpapi"
+	"code.hooto.com/lessos/lospack/server/data"
+	"code.hooto.com/lynkdb/iomix/skv"
 	"github.com/lessos/lessgo/httpsrv"
 	"github.com/lessos/lessgo/types"
 )
@@ -38,7 +39,7 @@ func (c PkgInfo) ListAction() {
 		limit    = 100
 	)
 
-	rs := data.Data.ObjectScan("info/", "", "", 10000)
+	rs := data.Data.PvScan("info/", "", "", 10000)
 	if !rs.OK() {
 		sets.Error = &types.ErrorMeta{
 			Code:    "500",
@@ -47,21 +48,23 @@ func (c PkgInfo) ListAction() {
 		return
 	}
 
-	rs.KvEach(func(key, value types.Bytex) {
+	rs.KvEach(func(entry *skv.ResultEntry) int {
 
 		if len(sets.Items) > limit {
-			return
+			return -1
 		}
 
 		var set lpapi.PackageInfo
-		if err := value.JsonDecode(&set); err == nil {
+		if err := entry.Decode(&set); err == nil {
 
 			if qry_text != "" && !strings.Contains(set.Meta.Name, qry_text) {
-				return
+				return 0
 			}
 
 			sets.Items = append(sets.Items, set)
 		}
+
+		return 0
 	})
 
 	sort.Slice(sets.Items, func(i, j int) bool {
@@ -84,7 +87,7 @@ func (c PkgInfo) EntryAction() {
 		return
 	}
 
-	rs := data.Data.ObjectGet("info/" + c.Params.Get("name"))
+	rs := data.Data.PvGet("info/" + c.Params.Get("name"))
 	if !rs.OK() {
 		set.Error = &types.ErrorMeta{
 			Code:    "404",
@@ -93,7 +96,7 @@ func (c PkgInfo) EntryAction() {
 		return
 	}
 
-	if err := rs.JsonDecode(&set); err != nil {
+	if err := rs.Decode(&set); err != nil {
 		set.Error = &types.ErrorMeta{
 			Code:    "404",
 			Message: "PackageInfo Not Found",
@@ -117,7 +120,7 @@ func (c PkgInfo) SetAction() {
 		return
 	}
 
-	if rs := data.Data.ObjectGet("info/" + set.Meta.Name); !rs.OK() {
+	if rs := data.Data.PvGet("info/" + set.Meta.Name); !rs.OK() {
 		set.Error = &types.ErrorMeta{
 			Code:    "400",
 			Message: "PackageInfo Not Found",
@@ -127,7 +130,7 @@ func (c PkgInfo) SetAction() {
 
 		var prev lpapi.PackageInfo
 
-		if err := rs.JsonDecode(&prev); err != nil {
+		if err := rs.Decode(&prev); err != nil {
 			set.Error = &types.ErrorMeta{
 				Code:    "500",
 				Message: "Server Error",
@@ -139,7 +142,8 @@ func (c PkgInfo) SetAction() {
 			prev.Description = set.Description
 		}
 
-		if rs := data.Data.ObjectPut("info/"+set.Meta.Name, prev, nil); !rs.OK() {
+		prev.Kind = ""
+		if rs := data.Data.PvPut("info/"+set.Meta.Name, prev, nil); !rs.OK() {
 			set.Error = &types.ErrorMeta{
 				Code:    "500",
 				Message: "Server Error",

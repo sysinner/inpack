@@ -1,4 +1,4 @@
-// Copyright 2015 lessOS.com, All rights reserved.
+// Copyright 2016 lessos Authors, All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,15 +24,16 @@ import (
 	"sort"
 	"strings"
 
-	"code.hooto.com/lessos/lospack/server/data"
 	"code.hooto.com/lessos/lospack/lpapi"
+	"code.hooto.com/lessos/lospack/server/data"
+	"code.hooto.com/lynkdb/iomix/skv"
 	"github.com/lessos/lessgo/encoding/json"
 	"github.com/lessos/lessgo/httpsrv"
 	"github.com/lessos/lessgo/types"
 )
 
 const (
-	pkg_spec_name = "lospack.json"
+	pkg_spec_name = ".lospack/lospack.json"
 )
 
 type Pkg struct {
@@ -51,38 +52,40 @@ func (c Pkg) ListAction() {
 		limit       = 100
 	)
 
-	rs := data.Data.ObjectScan("p/", "", "", 1000)
+	rs := data.Data.PvScan("p/", "", "", 1000)
 	if !rs.OK() {
 		ls.Error = &types.ErrorMeta{
 			Code:    "500",
-			Message: rs.Status,
+			Message: rs.Bytex().String(),
 		}
 		return
 	}
 
-	rs.KvEach(func(k, v types.Bytex) {
+	rs.KvEach(func(entry *skv.ResultEntry) int {
 
 		if len(ls.Items) >= limit {
-			return
+			return 0
 		}
 
 		var set lpapi.Package
-		if err := v.JsonDecode(&set); err == nil {
+		if err := entry.Decode(&set); err == nil {
 
 			if qry_pkgname != "" && qry_pkgname != set.Meta.Name {
-				return
+				return 0
 			}
 
 			if qry_chanid != "" && qry_chanid != set.Channel {
-				return
+				return 0
 			}
 
 			if qry_text != "" && !strings.Contains(set.Meta.Name, qry_text) {
-				return
+				return 0
 			}
 
 			ls.Items = append(ls.Items, set)
 		}
+
+		return 0
 	})
 
 	sort.Slice(ls.Items, func(i, j int) bool {
@@ -116,8 +119,8 @@ func (c Pkg) EntryAction() {
 
 	if id != "" {
 
-		if rs := data.Data.ObjectGet("p/" + id); rs.OK() {
-			rs.JsonDecode(&set)
+		if rs := data.Data.PvGet("p/" + id); rs.OK() {
+			rs.Decode(&set)
 		} else if name != "" {
 			// TODO
 		} else {
@@ -247,7 +250,7 @@ func (c Pkg) CommitAction() {
 
 	pkgpath := fmt.Sprintf("p/%s", pkg_id)
 
-	rs := data.Data.ObjectGet(pkgpath)
+	rs := data.Data.PvGet(pkgpath)
 	if !rs.NotFound() {
 		set.Error = &types.ErrorMeta{
 			Code:    "400",
@@ -347,7 +350,7 @@ func (c Pkg) CommitAction() {
 		pack.Groups.Insert(v)
 	}
 
-	if rs = data.Data.ObjectPut(pkgpath, pack, nil); !rs.OK() {
+	if rs = data.Data.PvPut(pkgpath, pack, nil); !rs.OK() {
 		set.Error = &types.ErrorMeta{
 			Code:    "500",
 			Message: "Can not write to database",
@@ -356,7 +359,7 @@ func (c Pkg) CommitAction() {
 	}
 
 	var prev_info lpapi.PackageInfo
-	if rs := data.Data.ObjectGet("info/" + pack_spec.Name); rs.NotFound() {
+	if rs := data.Data.PvGet("info/" + pack_spec.Name); rs.NotFound() {
 
 		prev_info = lpapi.PackageInfo{
 			Meta: types.InnerObjectMeta{
@@ -373,7 +376,7 @@ func (c Pkg) CommitAction() {
 
 	} else if rs.OK() {
 
-		if err := rs.JsonDecode(&prev_info); err != nil {
+		if err := rs.Decode(&prev_info); err != nil {
 			set.Error = &types.ErrorMeta{
 				Code:    "500",
 				Message: "Server Error",
@@ -421,7 +424,7 @@ func (c Pkg) CommitAction() {
 
 	prev_info.Meta.Updated = types.MetaTimeNow()
 
-	if rs := data.Data.ObjectPut("info/"+pack_spec.Name, prev_info, nil); !rs.OK() {
+	if rs := data.Data.PvPut("info/"+pack_spec.Name, prev_info, nil); !rs.OK() {
 		set.Error = &types.ErrorMeta{
 			Code:    "500",
 			Message: "Server Error",
@@ -435,7 +438,6 @@ func (c Pkg) CommitAction() {
 func (c Pkg) SetAction() {
 
 	set := lpapi.Package{}
-
 	defer c.RenderJson(&set)
 
 	//
@@ -455,7 +457,7 @@ func (c Pkg) SetAction() {
 		return
 	}
 
-	rs := data.Data.ObjectGet("p/" + set.Meta.ID)
+	rs := data.Data.PvGet("p/" + set.Meta.ID)
 	if !rs.OK() {
 		set.Error = &types.ErrorMeta{
 			Code:    "400",
@@ -465,7 +467,7 @@ func (c Pkg) SetAction() {
 	}
 
 	var prev lpapi.Package
-	if err := rs.JsonDecode(&prev); err != nil {
+	if err := rs.Decode(&prev); err != nil {
 		set.Error = &types.ErrorMeta{
 			Code:    "500",
 			Message: "Server Error",
@@ -480,8 +482,8 @@ func (c Pkg) SetAction() {
 			currChannel lpapi.PackageChannel
 		)
 
-		if rs := data.Data.ObjectGet("channel/" + set.Channel); !rs.OK() ||
-			rs.JsonDecode(&prevChannel) != nil {
+		if rs := data.Data.PvGet("channel/" + set.Channel); !rs.OK() ||
+			rs.Decode(&prevChannel) != nil {
 			set.Error = &types.ErrorMeta{
 				Code:    "500",
 				Message: "Server Error",
@@ -489,8 +491,8 @@ func (c Pkg) SetAction() {
 			return
 		}
 
-		if rs := data.Data.ObjectGet("channel/" + prev.Channel); !rs.OK() ||
-			rs.JsonDecode(&currChannel) != nil {
+		if rs := data.Data.PvGet("channel/" + prev.Channel); !rs.OK() ||
+			rs.Decode(&currChannel) != nil {
 			set.Error = &types.ErrorMeta{
 				Code:    "500",
 				Message: "Server Error",
@@ -512,10 +514,10 @@ func (c Pkg) SetAction() {
 		prev.Channel = set.Channel
 		prev.Meta.Updated = types.MetaTimeNow()
 
-		data.Data.ObjectPut("channel/"+currChannel.Meta.ID, currChannel, nil)
-		data.Data.ObjectPut("channel/"+prevChannel.Meta.ID, prevChannel, nil)
+		data.Data.PvPut("channel/"+currChannel.Meta.ID, currChannel, nil)
+		data.Data.PvPut("channel/"+prevChannel.Meta.ID, prevChannel, nil)
 
-		data.Data.ObjectPut("p/"+set.Meta.ID, prev, nil)
+		data.Data.PvPut("p/"+set.Meta.ID, prev, nil)
 	}
 
 	set.Kind = "Package"
@@ -525,17 +527,19 @@ func channelList() []lpapi.PackageChannel {
 
 	sets := []lpapi.PackageChannel{}
 
-	rs := data.Data.ObjectScan("channel/", "", "", 100)
+	rs := data.Data.PvScan("channel/", "", "", 100)
 	if !rs.OK() {
 		return sets
 	}
 
-	rs.KvEach(func(key, value types.Bytex) {
+	rs.KvEach(func(entry *skv.ResultEntry) int {
 
 		var set lpapi.PackageChannel
-		if err := value.JsonDecode(&set); err == nil {
+		if err := entry.Decode(&set); err == nil {
 			sets = append(sets, set)
 		}
+
+		return 0
 	})
 
 	return sets
