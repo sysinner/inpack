@@ -35,16 +35,18 @@ import (
 // npm install clean-css -g
 // npm install html-minifier -g
 var (
-	build_dir = ".build"
-	build_src = ".build_src"
-	spec_json = "lospack.json"
-	jscp      = "uglifyjs %s -c -m -o %s"
-	csscp     = "cleancss --skip-rebase %s -o %s"
-	htmlcp    = "html-minifier -c /tmp/html-minifier.conf %s -o %s"
-	pngcp     = "optipng -o7 %s -out %s"
-	filecp    = "cp -rpf %s %s"
-	cpfiles   types.ArrayString
-	ignores   = types.ArrayString{
+	build_dir   = ".build"
+	build_src   = ".build_src"
+	pack_spec   = "lospack.spec"
+	spec_fold   = ".lospack"
+	packed_spec = spec_fold + "/lospack.json"
+	jscp        = "uglifyjs %s -c -m -o %s"
+	csscp       = "cleancss --skip-rebase %s -o %s"
+	htmlcp      = "html-minifier -c /tmp/html-minifier.conf %s -o %s"
+	pngcp       = "optipng -o7 %s -out %s"
+	filecp      = "cp -rpf %s %s"
+	cpfiles     types.ArrayString
+	ignores     = types.ArrayString{
 		".git",
 		".gitignore",
 		".gitmodules",
@@ -127,9 +129,9 @@ func Cmd() error {
 		err        error
 		cfg        *ini.ConfigIni
 		spec_files = []string{
-			"./.lospack/lospack.spec",
-			"./misc/lospack/lospack.spec",
-			"./lospack.spec",
+			fmt.Sprintf("./.lospack/%s", pack_spec),
+			fmt.Sprintf("./misc/lospack/%s", pack_spec),
+			fmt.Sprintf("./%s", pack_spec),
 		}
 	)
 
@@ -195,7 +197,7 @@ func Cmd() error {
 	if err := _build_source(cfg); err == nil {
 
 		//
-		if err := json.EncodeToFile(pkg, build_src+"/.lospack/"+spec_json, "  "); err != nil {
+		if err := json.EncodeToFile(pkg, fmt.Sprintf("%s/%s", build_src, packed_spec), "  "); err != nil {
 			return err
 		}
 
@@ -261,10 +263,10 @@ func Cmd() error {
 		return fmt.Errorf("FileCopy %s", err.Error())
 	}
 
-	os.MkdirAll(build_dir+"/.lospack", 0755)
+	os.MkdirAll(fmt.Sprintf("%s/%s", build_dir, spec_fold), 0755)
 
 	//
-	if err := json.EncodeToFile(pkg, build_dir+"/.lospack/"+spec_json, "  "); err != nil {
+	if err := json.EncodeToFile(pkg, fmt.Sprintf("%s/%s", build_dir, packed_spec), "  "); err != nil {
 		return err
 	}
 
@@ -327,7 +329,7 @@ func _build_source(cfg *ini.ConfigIni) error {
 		}
 	}
 
-	spec_file := fmt.Sprintf("./%s/.lospack/lospack.spec", build_src)
+	spec_file := fmt.Sprintf("./%s/%s/%s", build_src, spec_fold, pack_spec)
 	if err := os.MkdirAll(filepath.Dir(spec_file), 0755); err != nil {
 		return err
 	}
