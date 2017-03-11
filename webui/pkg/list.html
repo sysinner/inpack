@@ -6,21 +6,13 @@
   </button>
 </div>
 
-<style type="text/css">
-._list_query_input {
-    padding: 5px 5px 5px 30px;
-    background: url(./img/search-16.png) no-repeat 8px; 
-    width: 300px;
-}
-</style>
-
 <table width="100%">
   <tr>
     <td>
       <form id="lps-pkgls-qry" action="#" class="form-inlines">
         <input id="lps-pkgls-qry-text" type="text"
-          class="form-control _list_query_input" 
-          placeholder="Press Enter Version to Search" 
+          class="form-control lps-toolbar-qry-input" 
+          placeholder="Press Enter to Search" 
           value="">
       </form>
     </td>
@@ -83,10 +75,10 @@
 <script id="lps-pkgls-tpl" type="text/html">
 {[~it.items :v]}
 <tr>
-  <td>{[=v.meta.name]}</td>
+  <td class="lps-font-mono">{[=v.meta.name]}</td>
   <td>{[=v.version]}</td>
   <td>{[=v.release]}</td>
-  <td>{[=v.pkg_os]}.{[=v.pkg_arch]}</td>
+  <td class="lps-font-mono">{[=v.pkg_os]}.{[=v.pkg_arch]}</td>
   <td>
   {[~it.channels :cv]}
     {[if (cv.meta.id == v.channel) {]}

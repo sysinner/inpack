@@ -1,8 +1,19 @@
+.lps-font-mono {
+	font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+	font-size: 1em;
+}
+
 #lps-nav-menu {
 
 }
 
 #lps-nav-menu .active {
     background-color: #eee;
+}
+
+.lps-toolbar-qry-input {
+    padding: 5px 5px 5px 30px;
+    background: url(../img/search-16.png) no-repeat 8px; 
+    width: 300px;
 }
 
