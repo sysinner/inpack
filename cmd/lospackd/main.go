@@ -52,11 +52,6 @@ func init() {
 	}
 }
 
-type obj struct {
-	Name  string
-	Value string
-}
-
 func main() {
 
 	if err = config.Initialize(*flagPrefix); err != nil {

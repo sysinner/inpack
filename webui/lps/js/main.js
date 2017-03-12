@@ -62,10 +62,8 @@ lpLps.Index = function(options)
         return;
     }
 
-    console.log(lpLps.tplpath("index"));
     l4i.Ajax(lpLps.tplpath("main"), {
         callback: function(err, data) {
-            console.log(data);
             if (err) {
                 return;
             }
