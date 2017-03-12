@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
   <title>PGs</title>
-  <script src="/lps/ui/lessui/js/sea.js"></script>
-  <script src="/lps/ui/js/main.js"></script>
+  <script src="/lps/~/lessui/js/sea.js"></script>
+  <script src="/lps/~/lps/js/main.js"></script>
   <style>
   body {
     padding: 10px !important;
-	min-width: 600px !important;
+    min-width: 600px !important;
   }
   </style>
 </head>
@@ -31,13 +31,13 @@
     seajs.config({
         base: lpLps.base,
         alias: {
-            ep: "ui/lessui/js/eventproxy.js"
+            ep: "~/lessui/js/eventproxy.js"
         },
     });
 
     seajs.use([
-        "ui/js/jquery.js",
-        "ui/lessui/js/browser-detect.js",
+        "~/lps/js/jquery.js",
+        "~/lessui/js/browser-detect.js",
     ], function() {
 
         var browser = BrowserDetect.browser;
@@ -51,15 +51,15 @@
         }
 
         seajs.use([
-            "ui/bs/3.3/css/bootstrap.css",
-            "ui/bs/3.3/js/bootstrap.js",
-            "ui/lessui/css/lessui.css",
-            "ui/lessui/js/lessui.js",
-            "ui/purecss/css/pure.css",    
-            "ui/css/main.css?_="+ Math.random(),
+            "~/bs/3.3/css/bootstrap.css",
+            "~/bs/3.3/js/bootstrap.js",
+            "~/lessui/css/lessui.css",
+            "~/lessui/js/lessui.js",
+            "~/purecss/css/pure.css",    
+            "~/lps/css/main.css",
         ], function() {
 
-		    l4i.debug = true;
+            l4i.debug = true;
             lpLps.Index({
                 dstid: "body-content",
             });

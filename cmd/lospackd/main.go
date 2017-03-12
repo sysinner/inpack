@@ -74,12 +74,11 @@ func main() {
 	}
 
 	// http service
-	httpsrv.GlobalService.Config.UrlBasePath = "/lps"
 	httpsrv.GlobalService.Config.HttpPort = config.Config.SrvHttpPort
 
 	//
-	httpsrv.GlobalService.ModuleRegister("v1", v1.NewModule())
-	httpsrv.GlobalService.ModuleRegister("ui", ui.NewModule())
+	httpsrv.GlobalService.ModuleRegister("/lps/v1", v1.NewModule())
+	httpsrv.GlobalService.ModuleRegister("/lps", ui.NewModule())
 
 	//
 

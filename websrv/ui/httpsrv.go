@@ -25,7 +25,14 @@ func NewModule() httpsrv.Module {
 
 	module.RouteSet(httpsrv.Route{
 		Type:       httpsrv.RouteTypeStatic,
+		Path:       "~",
 		StaticPath: config.Prefix + "/webui",
+	})
+
+	module.RouteSet(httpsrv.Route{
+		Type:       httpsrv.RouteTypeStatic,
+		Path:       "-",
+		StaticPath: config.Prefix + "/webui/lps/tpl",
 	})
 
 	return module

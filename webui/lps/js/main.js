@@ -30,9 +30,14 @@ lpLps.apipath = function(uri)
     return lpLps.api + uri;
 }
 
-lpLps.workLoader = function(uri)
+lpLps.tplpath = function(uri)
 {
-    l4i.Ajax(lpLps.path(uri), {
+    return lpLps.base +"-/"+ uri +".html";
+}
+
+lpLps.tplWorkLoader = function(uri)
+{
+    l4i.Ajax(lpLps.tplpath(uri), {
         callback: function(err, data) {
             if (err) {
                 return;
@@ -57,8 +62,10 @@ lpLps.Index = function(options)
         return;
     }
 
-    l4i.Ajax(lpLps.path("ui/main.html"), {
+    console.log(lpLps.tplpath("index"));
+    l4i.Ajax(lpLps.tplpath("main"), {
         callback: function(err, data) {
+            console.log(data);
             if (err) {
                 return;
             }
@@ -154,7 +161,7 @@ lpLps.InfoListRefresh = function()
 		if (document.getElementById(tplid)) {
             ep.emit("tpl", null);
         } else {
-			l4i.Ajax(lpLps.path("ui/pkginfo/list.html"), {
+			l4i.Ajax(lpLps.tplpath("pkginfo/list"), {
 				callback: ep.done("tpl"),
 			});
         }
@@ -233,7 +240,7 @@ lpLps.InfoSet = function(name)
             callback: ep.done("data"),
         });
 
-        l4i.Ajax(lpLps.path("ui/pkginfo/set.html"), {
+        l4i.Ajax(lpLps.tplpath("pkginfo/set"), {
             callback: ep.done("tpl"),
         });
     });
@@ -313,7 +320,7 @@ lpLps.PackageNew = function()
 			});
 		}
 
-        l4i.Ajax(lpLps.path("ui/pkg/new.html"), {
+        l4i.Ajax(lpLps.tplpath("pkg/new"), {
             callback: ep.done("tpl"),
         });
     });
@@ -377,7 +384,7 @@ lpLps.PackageNewCommit = function()
                         l4i.InnerAlert("#lps-pkgnew-alert", 'alert-success', "Successfully commit");
 
                         window.setTimeout(function(){
-                            lpLps.workLoader("pkginfo/list.html");
+                            lpLps.tplWorkLoader("pkginfo/list");
                         }, 1000);
                     }
                 });
@@ -470,7 +477,7 @@ lpLps.PackageListRefresh = function(navevent, pkgname)
 		if (document.getElementById(tplid)) {
             ep.emit("tpl", null);
         } else {
-			l4i.Ajax(lpLps.path("ui/pkg/list.html"), {
+			l4i.Ajax(lpLps.tplpath("pkg/list"), {
 				callback: ep.done("tpl"),
 			});
         }
@@ -551,7 +558,7 @@ lpLps.PackageSet = function(id)
             callback: ep.done("pkg"),
         });
 
-        l4i.Ajax(lpLps.path("ui/pkg/set.html"), {
+        l4i.Ajax(lpLps.tplpath("pkg/set"), {
             callback: ep.done("tpl"),
         });
     });
@@ -635,7 +642,7 @@ lpLps.ChannelListRefresh = function()
             alert("ChannelSet error, Please try again later (EC:lps-channelset)");
         });
 
-        l4i.Ajax(lpLps.path("ui/channel/list.html"), {
+        l4i.Ajax(lpLps.tplpath("channel/list"), {
             callback: ep.done('tpl'),
         });
 
@@ -702,7 +709,7 @@ lpLps.ChannelSet = function(id)
             alert("ChannelSet error, Please try again later (EC:lps-channelset)");
         });
 
-        l4i.Ajax(lpLps.path("ui/channel/set.html"), {
+        l4i.Ajax(lpLps.tplpath("channel/set"), {
             callback: ep.done('tpl'),
         });
 
@@ -760,7 +767,7 @@ lpLps.channelImportArray = [];
 lpLps.ChannelImport = function()
 {
     lpLps.channelImportArray = [];
-    lpLps.workLoader("channel/import.html");
+    lpLps.tplWorkLoader("channel/import");
 }
 
 lpLps.ChannelImportConfirm = function()
