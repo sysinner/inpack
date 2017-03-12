@@ -39,6 +39,7 @@ func init() {
 		v := ""
 
 		if len(os.Args) <= i+1 {
+			args_kv[k[1:]] = types.Bytex([]byte(""))
 			continue
 		}
 

@@ -35,18 +35,19 @@ import (
 // npm install clean-css -g
 // npm install html-minifier -g
 var (
-	build_dir   = ".build"
-	build_src   = ".build_src"
-	pack_spec   = "lospack.spec"
-	spec_fold   = ".lospack"
-	packed_spec = spec_fold + "/lospack.json"
-	jscp        = "uglifyjs %s -c -m -o %s"
-	csscp       = "cleancss --skip-rebase %s -o %s"
-	htmlcp      = "html-minifier -c /tmp/html-minifier.conf %s -o %s"
-	pngcp       = "optipng -o7 %s -out %s"
-	filecp      = "cp -rpf %s %s"
-	cpfiles     types.ArrayString
-	ignores     = types.ArrayString{
+	pack_dir        = ""
+	pack_spec       = "lospack.spec"
+	build_bin       = ".build_bin"
+	build_src       = ".build_src"
+	packed_spec_dir = ".lospack"
+	packed_spec     = packed_spec_dir + "/lospack.json"
+	jscp            = "uglifyjs %s -c -m -o %s"
+	csscp           = "cleancss --skip-rebase %s -o %s"
+	htmlcp          = "html-minifier -c /tmp/html-minifier.conf %s -o %s"
+	pngcp           = "optipng -o7 %s -out %s"
+	filecp          = "cp -rpf %s %s"
+	cpfiles         types.ArrayString
+	ignores         = types.ArrayString{
 		".git",
 		".gitignore",
 		".gitmodules",
@@ -74,6 +75,15 @@ func Cmd() error {
 
 	if runtime.GOARCH != "amd64" {
 		return fmt.Errorf("CPU: amd64 or x86_64 is required")
+	}
+
+	if v, ok := cliflags.Value("pack_dir"); ok {
+		pack_dir = filepath.Clean(v.String()) + "/"
+		if _, err := os.Stat(pack_dir); err != nil {
+			return fmt.Errorf("pack_dir Not Found")
+		}
+		fmt.Println("change dir\n    ", pack_dir)
+		os.Chdir(pack_dir)
 	}
 
 	dist := ""
@@ -139,7 +149,6 @@ func Cmd() error {
 		spec_files = append([]string{v.String()}, spec_files...)
 	}
 
-	// tpl, err := template.New("s").Parse(etr.ExecStart)
 	for _, v := range spec_files {
 
 		if cfg, err = ini.ConfigIniParse(v); err == nil {
@@ -194,27 +203,36 @@ func Cmd() error {
 	)
 
 	//
-	if err := _build_source(cfg); err == nil {
+	if _, ok := cliflags.Value("build_src"); ok {
 
-		//
-		if err := json.EncodeToFile(pkg, fmt.Sprintf("%s/%s", build_src, packed_spec), "  "); err != nil {
-			return err
-		}
+		if err := _build_source(cfg); err == nil {
 
-		if err := _tar_compress(
-			build_src,
-			fmt.Sprintf("%s-%s-%s.all.src", pkg.Name, pkg.Version, pkg.Release),
-		); err != nil {
-			return err
+			//
+			if err := json.EncodeToFile(pkg, fmt.Sprintf("%s/%s", build_src, packed_spec), "  "); err != nil {
+				return err
+			}
+
+			if _, ok := cliflags.Value("build_src_nocompress"); !ok {
+				if err := _tar_compress(
+					build_src,
+					fmt.Sprintf("%s-%s-%s.all.src", pkg.Name, pkg.Version, pkg.Release),
+				); err != nil {
+					return err
+				}
+			}
 		}
+	}
+
+	if v, ok := cliflags.Value("build_bin"); ok && v.String() != "" {
+		build_bin = v.String()
 	}
 
 	//
 	pkg.PkgOS = dist
 	pkg.PkgArch = arch
 
-	cfg.Params("buildroot", build_dir)
-	os.Mkdir(build_dir, 0755)
+	cfg.Params("buildroot", build_bin)
+	os.Mkdir(build_bin, 0755)
 
 	cfp, err := os.OpenFile("/tmp/html-minifier.conf", os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
@@ -263,15 +281,19 @@ func Cmd() error {
 		return fmt.Errorf("FileCopy %s", err.Error())
 	}
 
-	os.MkdirAll(fmt.Sprintf("%s/%s", build_dir, spec_fold), 0755)
+	os.MkdirAll(fmt.Sprintf("%s/%s", build_bin, packed_spec_dir), 0755)
 
 	//
-	if err := json.EncodeToFile(pkg, fmt.Sprintf("%s/%s", build_dir, packed_spec), "  "); err != nil {
+	if err := json.EncodeToFile(pkg, fmt.Sprintf("%s/%s", build_bin, packed_spec), "  "); err != nil {
 		return err
 	}
 
+	if _, ok := cliflags.Value("build_bin_nocompress"); ok {
+		return nil
+	}
+
 	return _tar_compress(
-		build_dir,
+		build_bin,
 		fmt.Sprintf("%s-%s-%s.%s.%s", pkg.Name, pkg.Version, pkg.Release, dist, arch),
 	)
 }
@@ -329,7 +351,7 @@ func _build_source(cfg *ini.ConfigIni) error {
 		}
 	}
 
-	spec_file := fmt.Sprintf("./%s/%s/%s", build_src, spec_fold, pack_spec)
+	spec_file := fmt.Sprintf("./%s/%s/%s", build_src, packed_spec_dir, pack_spec)
 	if err := os.MkdirAll(filepath.Dir(spec_file), 0755); err != nil {
 		return err
 	}
@@ -416,7 +438,7 @@ func _compress(ls types.ArrayString, cmd_str string) error {
 
 	for _, file := range ls {
 
-		dstfile := fmt.Sprintf("./%s/%s", build_dir, file)
+		dstfile := fmt.Sprintf("%s/%s", build_bin, file)
 
 		if _, err := os.Stat(dstfile); err == nil {
 			continue
