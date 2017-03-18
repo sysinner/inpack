@@ -15,7 +15,6 @@
 package config // import "code.hooto.com/lessos/lospack/server/config"
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -33,15 +32,16 @@ var (
 
 type ConfigCommon struct {
 	SrvHttpPort   uint16                   `json:"srv_http_port,omitempty"`
-	PprofHttpPort uint16                   `json:"pprof_http_port,omitempty"`
-	IamServiceUrl string                   `json:"iam_service_url"`
 	IoConnectors  connect.MultiConnOptions `json:"io_connects"`
+	IamServiceUrl string                   `json:"iam_service_url"`
+	PprofHttpPort uint16                   `json:"pprof_http_port,omitempty"`
 }
 
-func Initialize(prefix string) error {
+func Init(prefix string) error {
 
 	// var Prefix
 	if prefix == "" {
+
 		if prefix, err = filepath.Abs(filepath.Dir(os.Args[0]) + "/.."); err != nil {
 			prefix = "/home/action/apps/lospack"
 		}
@@ -50,48 +50,44 @@ func Initialize(prefix string) error {
 	Prefix = filepath.Clean(prefix)
 
 	//
-	file := Prefix + "/etc/config.json"
-	if _, err := os.Stat(file); err != nil && os.IsNotExist(err) {
-		return fmt.Errorf("Error: config file is not exists")
-	}
-
+	file := Prefix + "/etc/lps_config.json"
 	if err := json.DecodeFile(file, &Config); err != nil {
 		return err
 	}
 
 	if opts := Config.IoConnectors.Options("database"); opts == nil {
 		Config.IoConnectors.SetOptions(connect.ConnOptions{
-			Name:      "database",
+			Name:      "lps_database",
 			Connector: "iomix/skv/Connector",
 		})
 	}
 
 	if opts := Config.IoConnectors.Options("storage"); opts == nil {
 		Config.IoConnectors.SetOptions(connect.ConnOptions{
-			Name:      "storage",
+			Name:      "lps_storage",
 			Connector: "iomix/fs/Connector",
 		})
 	}
 
 	for _, opts := range Config.IoConnectors {
 
-		if opts.Name == "database" &&
+		if opts.Name == "lps_database" &&
 			opts.Connector == "iomix/skv/Connector" {
 
-			opts.Driver = types.NewNameIdentifier("lessdb/sskv")
+			opts.Driver = types.NewNameIdentifier("lynkdb/kvgo")
 
 			if v := opts.Value("data_dir"); v == "" {
-				opts.SetValue("data_dir", prefix+"/var/data")
+				opts.SetValue("data_dir", prefix+"/var/lps_database")
 			}
 		}
 
-		if opts.Name == "storage" &&
+		if opts.Name == "lps_storage" &&
 			opts.Connector == "iomix/fs/Connector" {
 
-			opts.Driver = types.NewNameIdentifier("local/fs")
+			opts.Driver = types.NewNameIdentifier("lynkdb/localfs")
 
 			if v := opts.Value("data_dir"); v == "" {
-				opts.SetValue("data_dir", prefix+"/var/storage")
+				opts.SetValue("data_dir", prefix+"/var/lps_storage")
 			}
 		}
 	}

@@ -17,7 +17,7 @@ package data // import "code.hooto.com/lessos/lospack/server/data"
 import (
 	"fmt"
 
-	"code.hooto.com/lessos/lospack/server/config"
+	"code.hooto.com/lynkdb/iomix/connect"
 	"code.hooto.com/lynkdb/iomix/fs"
 	"code.hooto.com/lynkdb/iomix/skv"
 	"code.hooto.com/lynkdb/kvgo"
@@ -30,17 +30,17 @@ var (
 	Storage fs.Connector
 )
 
-func Init() error {
+func Init(cfg connect.MultiConnOptions) error {
 
 	//
-	if opts := config.Config.IoConnectors.Options("database"); opts == nil {
+	if opts := cfg.Options("lps_database"); opts == nil {
 		return fmt.Errorf("No IoConnector (%s) Found", "database")
 	} else if Data, err = kvgo.Open(*opts); err != nil {
 		return fmt.Errorf("Can Not Connect To %s, Error: %s", "database", err.Error())
 	}
 
 	//
-	if opts := config.Config.IoConnectors.Options("storage"); opts == nil {
+	if opts := cfg.Options("lps_storage"); opts == nil {
 		return fmt.Errorf("Can Not Connect To %s", "storage")
 	} else if Storage, err = localfs.Open(*opts); err != nil {
 		return fmt.Errorf("Can Not Connect To %s, Error: %s", "storage", err.Error())

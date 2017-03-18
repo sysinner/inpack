@@ -39,7 +39,7 @@ var (
 	err        error
 )
 
-func init() {
+func main() {
 	//
 	config.Version = version
 
@@ -50,16 +50,13 @@ func init() {
 	if !flag.Parsed() {
 		flag.Parse()
 	}
-}
 
-func main() {
-
-	if err = config.Initialize(*flagPrefix); err != nil {
+	if err = config.Init(*flagPrefix); err != nil {
 		fmt.Printf("conf.Initialize error: %s\n", err.Error())
 		os.Exit(1)
 	}
 
-	if err = data.Init(); err != nil {
+	if err = data.Init(config.Config.IoConnectors); err != nil {
 		fmt.Printf("data.Init error: %s\n", err.Error())
 		os.Exit(1)
 	}
@@ -67,20 +64,19 @@ func main() {
 	if config.Config.IamServiceUrl != "" {
 		iamclient.ServiceUrl = config.Config.IamServiceUrl
 	}
-
-	// http service
-	httpsrv.GlobalService.Config.HttpPort = config.Config.SrvHttpPort
-
 	//
 	httpsrv.GlobalService.ModuleRegister("/lps/v1", v1.NewModule())
 	httpsrv.GlobalService.ModuleRegister("/lps", ui.NewModule())
 
 	//
-
 	if config.Config.PprofHttpPort > 0 {
 		go http.ListenAndServe(fmt.Sprintf(":%d", config.Config.PprofHttpPort), nil)
 	}
 
+	// http service
+	httpsrv.GlobalService.Config.HttpPort = config.Config.SrvHttpPort
+
+	//
 	logger.Print("info", "running")
 	httpsrv.GlobalService.Start()
 }
