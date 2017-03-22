@@ -1,0 +1,16 @@
+{
+  "http_port": 3000,
+  "io_connects": [
+    {
+      "name": "lps_database",
+      "connector": "iomix/skv/Connector",
+      "driver": "lynkdb/kvgo"
+    },
+    {
+      "name": "lps_storage",
+      "connector": "iomix/fs/Connector",
+      "driver": "lynkdb/localfs"
+    }
+  ],
+  "iam_service_url": "https://www.example.com/iam"
+}

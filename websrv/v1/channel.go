@@ -189,7 +189,7 @@ func (c Channel) DeleteAction() {
 		return
 	}
 
-	if rs := data.Data.PvDel("channel/" + c.Params.Get("id")); !rs.OK() {
+	if rs := data.Data.PvDel("channel/"+c.Params.Get("id"), nil); !rs.OK() {
 		set.Error = &types.ErrorMeta{
 			Code:    "500",
 			Message: "Server Error",

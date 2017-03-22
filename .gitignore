@@ -3,6 +3,7 @@ doc/*
 var/*
 bin/*
 etc/*
+!etc/lps_config.tpl.json
 .build
 webui/lessui
 webui/bs

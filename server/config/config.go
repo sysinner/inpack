@@ -31,9 +31,9 @@ var (
 )
 
 type ConfigCommon struct {
-	SrvHttpPort   uint16                   `json:"srv_http_port,omitempty"`
+	HttpPort      uint16                   `json:"http_port,omitempty"`
 	IoConnectors  connect.MultiConnOptions `json:"io_connects"`
-	IamServiceUrl string                   `json:"iam_service_url"`
+	IamServiceUrl string                   `json:"iam_service_url,omitempty"`
 	PprofHttpPort uint16                   `json:"pprof_http_port,omitempty"`
 }
 

@@ -74,7 +74,7 @@ func main() {
 	}
 
 	// http service
-	httpsrv.GlobalService.Config.HttpPort = config.Config.SrvHttpPort
+	httpsrv.GlobalService.Config.HttpPort = config.Config.HttpPort
 
 	//
 	logger.Print("info", "running")
