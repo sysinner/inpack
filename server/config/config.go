@@ -18,19 +18,22 @@ import (
 	"os"
 	"path/filepath"
 
+	"code.hooto.com/lessos/iam/iamapi"
 	"code.hooto.com/lynkdb/iomix/connect"
+	"github.com/lessos/lessgo/crypto/idhash"
 	"github.com/lessos/lessgo/encoding/json"
 	"github.com/lessos/lessgo/types"
 )
 
 var (
 	Prefix  string
-	Version string
+	Version = "0.0.1.dev"
 	Config  ConfigCommon
 	err     error
 )
 
 type ConfigCommon struct {
+	InstanceId    string                   `json:"instance_id"`
 	HttpPort      uint16                   `json:"http_port,omitempty"`
 	IoConnectors  connect.MultiConnOptions `json:"io_connects"`
 	IamServiceUrl string                   `json:"iam_service_url,omitempty"`
@@ -92,9 +95,30 @@ func Init(prefix string) error {
 		}
 	}
 
-	if err := json.EncodeToFile(Config, file, "  "); err != nil {
-		return err
+	if len(Config.InstanceId) < 16 {
+		Config.InstanceId = idhash.RandHexString(16)
 	}
 
 	return nil
+}
+
+func IamAppInstance() iamapi.AppInstance {
+
+	return iamapi.AppInstance{
+		Meta: types.ObjectMeta{
+			ID: Config.InstanceId,
+		},
+		Version:  Version,
+		AppID:    "lospack",
+		AppTitle: "lessOS Package Service",
+		Status:   1,
+		Url:      "",
+		Privileges: []iamapi.AppPrivilege{
+			{
+				Privilege: "lps.admin",
+				Roles:     []uint32{1},
+				Desc:      "Package Management",
+			},
+		},
+	}
 }
