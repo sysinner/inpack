@@ -20,7 +20,7 @@ go build -ldflags "-s -w" -o {{.buildroot}}/bin/lospack cmd/lospack/main.go
 misc/
 bin/
 etc/config.json
-webui/bs/
+webui/twbs/
 webui/lessui/
 webui/purecss/
 webui/channel/
