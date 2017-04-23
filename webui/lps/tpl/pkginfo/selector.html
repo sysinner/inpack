@@ -26,11 +26,7 @@
       <th>Last Version</th>
       <!-- <th>Versions</th> -->
       <th>
-        <div id="lps-infols-s6r-grpdev" class="dropdown">
-          <a id="lps-infols-s6r-grpdev-qryid" class="dropdown-toggle" data-toggle="dropdown" href="#">
-            <span id="lps-infols-s6r-grpdev-qrydp">Groups</span>
-          </a>
-        </div>
+        <div id="lps-infols-s6r-grpnav" class="dropdown">Groups</div>
       </th>
       <th>Updated</th>
       <th width="40px"></th>
@@ -43,35 +39,47 @@
 
 <div id="lps-infols-s6r-empty-alert" class="alert alert-warning hide">No more results ...</div>
 
-<script id="lps-infols-s6r-grpdev-tpl" type="text/html">
-  <a id="lps-infols-s6r-grpdev-qryid" class="dropdown-toggle" data-toggle="dropdown" href="#{[=it.qry_grpdev]}">
-    <span id="lps-infols-s6r-grpdev-qrydp">{[=it.qry_grpdev_dp]}</span> <span class="caret"></span>
-  </a>
-  <ul class="dropdown-menu">
-    <li><a class="grpdev-item" href="#" label="Groups">All Groups</a></li>
-    {[~it.grpdev :v]}
-    <li><a class="grpdev-item" href="#{[=v.key]}" label="{[=v.name]}">{[=v.name]}</a></li>
-    {[~]}
-  </ul>
+
+<script id="lps-infols-s6r-grpnav-tpl" type="text/html">
+<a class="dropdown-toggle" data-toggle="dropdown" href="#{[=it.qry_grpname]}">
+  <span id="lps-infols-qry-grpvalue">{[=it.qry_grpvalue]}</span> <span class="caret"></span>
+</a>
+<ul class="dropdown-menu">
+  <li><a class="grpnav-item" href="#" label="Groups" onclick="_lps_infols_grpselect()">All Groups</a></li>
+  {[~it.groups :v]}
+  <li>
+    <a class="grpnav-item" href="#{[=v.name]}"
+      onclick="_lps_infols_grpselect('{[=v.name]}', '{[=v.value]}')">
+      {[=v.value]}
+    </a>
+  </li>
+  {[~]}
+</ul>
 </script>
 
 <script id="lps-infols-s6r-tpl" type="text/html">
-  {[~it :v]}
-    <tr class="lps-infols-s6r-row" lpspkg="{[=v.meta.name]}">
-      <td>{[=v.meta.name]}</td>
-      <td>{[=v.lastVersion]}</td>
-      <!-- <td>{[=v.pkg_num]}</td> -->
-      <td>
-        {[~v.grp_dev :gv]}
-        <div>{[=gv.name]}</div>
-        {[~]}
-      </td>
-      <td>{[=v.meta.updated]}</td>
-      <td align="center">
-        <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
-      </td>
-    </tr>
-  {[~]}
+{[~it.items :v]}
+<tr class="lps-infols-s6r-row"
+  onclick="_lps_infols_pkgselect('{[=v.meta.name]}')"
+  lpspkg="{[=v.meta.name]}">
+  <td>{[=v.meta.name]}</td>
+  <td>{[=v.last_version]}</td>
+  <!-- <td>{[=v.pkg_num]}</td> -->
+  <td>
+    {[~v.groups :vg]}
+      {[~it.groups :g]}
+      {[if (vg == g.name) {]}
+        <div>{[=g.value]}</div>
+      {[}]}
+      {[~]}
+    {[~]}
+  </td>
+  <td>{[=l4i.MetaTimeParseFormat(v.meta.updated, "Y-m-d")]}</td>
+  <td align="center">
+    <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
+  </td>
+</tr>
+{[~]}
 </script>
 
 <script type="text/javascript">
@@ -81,24 +89,19 @@ $("#lps-infols-s6r-qry").submit(function(event) {
     lpLps.InfoListRefresh("lps-infols-s6r");
 });
 
-$("#lps-infols-s6r-grpdev").on("click", ".grpdev-item", function() {
-    $("#lps-infols-s6r-grpdev-qrydp").text($(this).attr("label"));
-    $("#lps-infols-s6r-grpdev-qryid").attr("href", $(this).attr("href"));
-    lpLps.InfoListRefresh("lps-infols-s6r");
-});
-
-$("#lps-infols-s6r").on("click", ".lps-infols-s6r-row", function() {
-
-    var name = $(this).attr("lpspkg");
+// $("#lps-infols-s6r").on("click", ".lps-infols-s6r-row", function() {
+function _lps_infols_pkgselect(name)
+{
+    // var name = $(this).attr("lpspkg");
 
     l4iModal.Open({
         id     : "lps-infols-s6r-pkgls",
         title  : "Select a Package to Launch",
-        tpluri : pandora.base +"sysmgr/+/lps/pkg/selector.tpl",
-        callback : l4iModal.CurOptions.callback,
+        tpluri : "/lps/-/pkg/selector.html",
+        fn_selector : l4iModal.CurOptions.fn_selector,
         success: function() {
-            $("#lps-pkgls-s6r-qry-name").val(name);
-            lpLps.PackageListRefresh("lps-pkgls-s6r");
+            // $("#lps-pkgls-s6r-qry-name").val(name);
+            lpLps.PackageListRefresh("lps-pkgls-s6r", name);
         },
         buttons : [
             {
@@ -107,13 +110,29 @@ $("#lps-infols-s6r").on("click", ".lps-infols-s6r-row", function() {
             },
         ],
     })
-});
+}
+//});
+
+function _lps_infols_grpselect(grp_name, grp_value)
+{
+    if (!grp_name) {
+        grp_name = "";
+    }
+    if (!grp_value) {
+        grp_value = "Groups";
+    }
+    lpLps.infols_qry_grpactive = grp_name;
+    lpLps.infols_qry_grpvalue = grp_value;
+
+    $("#lps-infols-s6r-qry-grpvalue").text(grp_value);
+
+    lpLps.InfoListRefresh();
+}
 
 var lpsInfoLsS6r = [
-    "sysmgr/+/lps/js/index.js?_="+ Math.random(),
+    "/lps/~/lps/js/main.js",
 ];
 seajs.use(lpsInfoLsS6r, function() {
     lpLps.InfoListRefresh("lps-infols-s6r");
 });
-
 </script>
