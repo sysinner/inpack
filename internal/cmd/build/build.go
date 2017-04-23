@@ -170,6 +170,8 @@ func Cmd() error {
 		cfg.Set("project.release", "1")
 	}
 
+	cfg.Set("project.dist", dist)
+
 	//
 	pkg := lpapi.PackageSpec{
 		Name:     cfg.Get("project.name").String(),
@@ -226,30 +228,24 @@ func Cmd() error {
 	if v, ok := cliflags.Value("build_bin"); ok && v.String() != "" {
 		build_bin = v.String()
 	}
+	build_bin, err = filepath.Abs(build_bin)
+	if err != nil {
+		return err
+	}
 
 	//
 	pkg.PkgOS = dist
 	pkg.PkgArch = arch
 
 	cfg.Params("buildroot", build_bin)
+	cfg.Params("project__version", string(pkg.Version))
+	cfg.Params("project__release", string(pkg.Release))
+	cfg.Params("project__os", dist)
+	cfg.Params("project__arch", arch)
+	cfg.Params("project__dist", dist)
+	cfg.Params("project__prefix", "/home/action/apps/"+pkg.Name)
+
 	os.Mkdir(build_bin, 0755)
-
-	cfp, err := os.OpenFile("/tmp/html-minifier.conf", os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-	defer cfp.Close()
-
-	cfp.Seek(0, 0)
-	cfp.Truncate(0)
-
-	if _, err := cfp.Write([]byte(htmlcp_config)); err != nil {
-		return err
-	}
-
-	if err := _cmd(cfg.Get("build").String()); err != nil {
-		return err
-	}
 
 	subfiles := _lookup_files(cfg.Get("js_compress").String(), ".js")
 	if err := _compress(subfiles, jscp); err != nil {
@@ -261,14 +257,29 @@ func Cmd() error {
 		return fmt.Errorf("CssCompress %s", err.Error())
 	}
 
-	subfiles = _lookup_files(cfg.Get("html_compress").String(), ".html")
-	if err := _compress(subfiles, htmlcp); err != nil {
-		return fmt.Errorf("HtmlCompress %s", err.Error())
-	}
+	{
+		cfp, err := os.OpenFile("/tmp/html-minifier.conf", os.O_RDWR|os.O_CREATE, 0644)
+		if err != nil {
+			return err
+		}
+		defer cfp.Close()
 
-	subfiles = _lookup_files(cfg.Get("html_compress").String(), ".tpl")
-	if err := _compress(subfiles, htmlcp); err != nil {
-		return fmt.Errorf("HtmlCompress %s", err.Error())
+		cfp.Seek(0, 0)
+		cfp.Truncate(0)
+
+		if _, err := cfp.Write([]byte(htmlcp_config)); err != nil {
+			return err
+		}
+
+		subfiles = _lookup_files(cfg.Get("html_compress").String(), ".html")
+		if err := _compress(subfiles, htmlcp); err != nil {
+			return fmt.Errorf("HtmlCompress %s", err.Error())
+		}
+
+		subfiles = _lookup_files(cfg.Get("html_compress").String(), ".tpl")
+		if err := _compress(subfiles, htmlcp); err != nil {
+			return fmt.Errorf("HtmlCompress %s", err.Error())
+		}
 	}
 
 	subfiles = _lookup_files(cfg.Get("png_compress").String(), ".png")
@@ -282,6 +293,10 @@ func Cmd() error {
 	}
 
 	os.MkdirAll(fmt.Sprintf("%s/%s", build_bin, packed_spec_dir), 0755)
+
+	if err := _cmd(cfg.Get("build").String()); err != nil {
+		return err
+	}
 
 	//
 	if err := json.EncodeToFile(pkg, fmt.Sprintf("%s/%s", build_bin, packed_spec), "  "); err != nil {
@@ -364,14 +379,14 @@ func _build_source(cfg *ini.ConfigIni) error {
 
 func _lookup_files(txt, suffix string) types.ArrayString {
 
-	ls := strings.Split(txt, "\n")
-
 	var subfiles types.ArrayString
+
+	ls := strings.Split(txt, "\n")
 
 	for _, v := range ls {
 
 		v = strings.TrimSpace(v)
-		if v == "" {
+		if v == "" || v == "/" {
 			continue
 		}
 
@@ -400,9 +415,9 @@ func _lookup_files(txt, suffix string) types.ArrayString {
 
 		var out []byte
 		if suffix != "" {
-			out, _ = exec.Command("find", v, "-type", "f", "-name", "*"+suffix).Output()
+			out, _ = exec.Command("find", v+"/", "-type", "f", "-name", "*"+suffix).Output()
 		} else {
-			out, _ = exec.Command("find", v, "-type", "f").Output()
+			out, _ = exec.Command("find", v+"/", "-type", "f").Output()
 		}
 		fs := strings.Split(strings.TrimSpace(string(out)), "\n")
 
