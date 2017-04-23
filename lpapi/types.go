@@ -59,6 +59,14 @@ var (
 			Value: "System Library",
 		},
 		{
+			Name:  "dev/db",
+			Value: "Database Server or Service",
+		},
+		{
+			Name:  "dev/stor",
+			Value: "Storage Server or Service",
+		},
+		{
 			Name:  "dev/sys-srv",
 			Value: "System Server or Service",
 		},
