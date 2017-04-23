@@ -18,18 +18,21 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
 
-	"code.hooto.com/lessos/lospack/lpapi"
-	"code.hooto.com/lessos/lospack/server/data"
 	"code.hooto.com/lynkdb/iomix/skv"
 	"github.com/lessos/lessgo/encoding/json"
 	"github.com/lessos/lessgo/httpsrv"
 	"github.com/lessos/lessgo/types"
+
+	"code.hooto.com/lessos/lospack/lpapi"
+	"code.hooto.com/lessos/lospack/server/config"
+	"code.hooto.com/lessos/lospack/server/data"
 )
 
 const (
@@ -38,6 +41,36 @@ const (
 
 type Pkg struct {
 	*httpsrv.Controller
+}
+
+func (c Pkg) DlAction() {
+
+	c.AutoRender = false
+
+	file := filepath.Clean(c.Request.RequestPath)
+
+	if !strings.HasPrefix(file, "lps/v1/pkg/dl/") {
+		c.RenderError(400, "Bad Request")
+		return
+	}
+
+	// TODO auth
+	opts := config.Config.IoConnectors.Options("lps_storage")
+	if opts == nil {
+		c.RenderError(400, "Bad Request")
+		return
+	}
+	fs_dir := opts.Value("data_dir")
+	if fs_dir == "" {
+		c.RenderError(400, "Bad Request")
+		return
+	}
+
+	http.ServeFile(
+		c.Response.Out,
+		c.Request.Request,
+		fs_dir+file[len("lps/v1/pkg/dl"):],
+	)
 }
 
 func (c Pkg) ListAction() {
@@ -103,10 +136,6 @@ func (c Pkg) EntryAction() {
 	var (
 		id   = c.Params.Get("id")
 		name = c.Params.Get("name")
-		// version = c.Params.Get("version")
-		// release = c.Params.Get("release")
-		// dist    = c.Params.Get("dist")
-		// arch    = c.Params.Get("arch")
 	)
 
 	if id == "" && name == "" {
@@ -115,6 +144,15 @@ func (c Pkg) EntryAction() {
 			Message: "ID or Name can not be null",
 		}
 		return
+	} else if name != "" {
+
+		id = fmt.Sprintf("%x", sha256.Sum256([]byte(strings.ToLower(
+			fmt.Sprintf(
+				"%s-%s-%s.%s.%s",
+				name, c.Params.Get("version"), c.Params.Get("release"),
+				c.Params.Get("dist"), c.Params.Get("arch"),
+			),
+		))))[:16]
 	}
 
 	if id != "" {
