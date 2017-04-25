@@ -140,8 +140,8 @@ func Cmd() error {
 		cfg        *ini.ConfigIni
 		spec_files = []string{
 			fmt.Sprintf("./.lospack/%s", pack_spec),
-			fmt.Sprintf("./misc/lospack/%s", pack_spec),
 			fmt.Sprintf("./%s", pack_spec),
+			fmt.Sprintf("./misc/lospack/%s", pack_spec),
 		}
 	)
 
