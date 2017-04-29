@@ -32,7 +32,7 @@ import (
 
 // yum install npm optipng
 // npm install uglify-js -g
-// npm install clean-css -g
+// npm install clean-css-cli -g
 // npm install html-minifier -g
 var (
 	pack_dir        = ""
@@ -85,6 +85,7 @@ func Cmd() error {
 		fmt.Println("change dir\n    ", pack_dir)
 		os.Chdir(pack_dir)
 	}
+	pack_dir, _ = filepath.Abs(pack_dir)
 
 	dist := ""
 	arch := "x64"
@@ -237,6 +238,7 @@ func Cmd() error {
 	pkg.PkgOS = dist
 	pkg.PkgArch = arch
 
+	cfg.Params("lospack__pack_dir", pack_dir)
 	cfg.Params("buildroot", build_bin)
 	cfg.Params("project__version", string(pkg.Version))
 	cfg.Params("project__release", string(pkg.Release))
@@ -488,7 +490,7 @@ func _cmd(script string) error {
 	script = "set -e\nset -o pipefail\n" + script + "\nexit 0\n"
 
 	if out, err := exec.Command("bash", "-c", script).Output(); err != nil {
-		return fmt.Errorf("CMD ERR(%s) %s", err.Error(), string(out)+script)
+		return fmt.Errorf("CMD ERR(%s) %s\nSCRIPT: %s", err.Error(), string(out), script)
 	}
 
 	return nil
