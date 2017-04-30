@@ -364,11 +364,17 @@ lpLps.PackageNewCommit = function()
                 l4i.Ajax(lpLps.apipath("pkg/commit"), {
                     method : "POST",
                     data   : JSON.stringify(req),
+                    timeout: 600000,
                     callback: function(err, rsj) {
 
                         if (err || !rsj) {
-                            l4i.InnerAlert("#lps-pkgnew-alert", 'alert-danger', "Can not connect service");
-                            return;
+                            if (err) {
+                                return l4i.InnerAlert("#lps-pkgnew-alert", 'alert-danger', err);
+                            }
+                            if (rsj && rsj.error) {
+                                return l4i.InnerAlert("#lps-pkgnew-alert", 'alert-danger', rsj.error.message);
+                            }
+                            return l4i.InnerAlert("#lps-pkgnew-alert", 'alert-danger', "Can not connect service");
                         }
 
                         if (rsj.error) {
