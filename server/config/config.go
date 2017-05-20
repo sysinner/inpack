@@ -33,11 +33,16 @@ var (
 )
 
 type ConfigCommon struct {
+	filepath      string
 	InstanceId    string                   `json:"instance_id"`
 	HttpPort      uint16                   `json:"http_port,omitempty"`
 	IoConnectors  connect.MultiConnOptions `json:"io_connects"`
 	IamServiceUrl string                   `json:"iam_service_url,omitempty"`
 	PprofHttpPort uint16                   `json:"pprof_http_port,omitempty"`
+}
+
+func (cfg *ConfigCommon) Sync() error {
+	return json.EncodeToFile(cfg, cfg.filepath, "  ")
 }
 
 func Init(prefix string) error {
@@ -57,6 +62,7 @@ func Init(prefix string) error {
 	if err := json.DecodeFile(file, &Config); err != nil {
 		return err
 	}
+	Config.filepath = file
 
 	if opts := Config.IoConnectors.Options("database"); opts == nil {
 		Config.IoConnectors.SetOptions(connect.ConnOptions{
@@ -99,7 +105,7 @@ func Init(prefix string) error {
 		Config.InstanceId = idhash.RandHexString(16)
 	}
 
-	return nil
+	return Config.Sync()
 }
 
 func IamAppInstance() iamapi.AppInstance {
