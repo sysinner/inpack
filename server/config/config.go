@@ -111,7 +111,7 @@ func Init(prefix string) error {
 func IamAppInstance() iamapi.AppInstance {
 
 	return iamapi.AppInstance{
-		Meta: types.ObjectMeta{
+		Meta: types.InnerObjectMeta{
 			ID: Config.InstanceId,
 		},
 		Version:  Version,
