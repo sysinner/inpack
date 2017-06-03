@@ -98,23 +98,22 @@ type PackageSpec struct {
 }
 
 type Package struct {
-	types.TypeMeta `json:",inline"`
-	Meta           types.InnerObjectMeta `json:"meta,omitempty"`
-	Version        types.Version         `json:"version,omitempty"`
-	Release        types.Version         `json:"release,omitempty"`
-	Description    string                `json:"description,omitempty"`
-	Vendor         string                `json:"vendor,omitempty"`
-	License        string                `json:"license,omitempty"`
-	PkgOS          string                `json:"pkg_os,omitempty"`
-	PkgArch        string                `json:"pkg_arch,omitempty"`
-	PkgSize        int64                 `json:"pkg_size,omitempty"`
-	PkgSum         string                `json:"pkg_sum,omitempty"`
-	Groups         types.ArrayString     `json:"groups,omitempty"`
-	Options        types.Labels          `json:"options,omitempty"`
-	Homepage       string                `json:"homepage,omitempty"`
-	Keywords       []string              `json:"keywords,omitempty"`
-	Built          types.MetaTime        `json:"built,omitempty"`
-	Channel        string                `json:"channel,omitempty"`
+	Meta        types.InnerObjectMeta `json:"meta,omitempty"`
+	Version     types.Version         `json:"version,omitempty"`
+	Release     types.Version         `json:"release,omitempty"`
+	Description string                `json:"description,omitempty"`
+	Vendor      string                `json:"vendor,omitempty"`
+	License     string                `json:"license,omitempty"`
+	PkgOS       string                `json:"pkg_os,omitempty"`
+	PkgArch     string                `json:"pkg_arch,omitempty"`
+	PkgSize     int64                 `json:"pkg_size,omitempty"`
+	PkgSum      string                `json:"pkg_sum,omitempty"`
+	Groups      types.ArrayString     `json:"groups,omitempty"`
+	Options     types.Labels          `json:"options,omitempty"`
+	Homepage    string                `json:"homepage,omitempty"`
+	Keywords    []string              `json:"keywords,omitempty"`
+	Built       types.MetaTime        `json:"built,omitempty"`
+	Channel     string                `json:"channel,omitempty"`
 }
 
 type PackageList struct {

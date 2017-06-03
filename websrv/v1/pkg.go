@@ -85,7 +85,7 @@ func (c Pkg) ListAction() {
 		limit       = 100
 	)
 
-	rs := data.Data.PvScan("p/", "", "", 1000)
+	rs := data.Data.PoScan("p", []byte{}, []byte{}, 1000)
 	if !rs.OK() {
 		ls.Error = &types.ErrorMeta{
 			Code:    "500",
@@ -130,7 +130,10 @@ func (c Pkg) ListAction() {
 
 func (c Pkg) EntryAction() {
 
-	set := lpapi.Package{}
+	var set struct {
+		types.TypeMeta
+		lpapi.Package
+	}
 	defer c.RenderJson(&set)
 
 	var (
@@ -157,8 +160,8 @@ func (c Pkg) EntryAction() {
 
 	if id != "" {
 
-		if rs := data.Data.PvGet("p/" + id); rs.OK() {
-			rs.Decode(&set)
+		if rs := data.Data.PoGet("p", id); rs.OK() {
+			rs.Decode(&set.Package)
 		} else if name != "" {
 			// TODO
 		} else {
@@ -167,14 +170,10 @@ func (c Pkg) EntryAction() {
 	}
 
 	if set.Meta.Name == "" {
-		set.Error = &types.ErrorMeta{
-			Code:    "404",
-			Message: "Package Not Found",
-		}
-		return
+		set.Error = types.NewErrorMeta("404", "Package Not Found")
+	} else {
+		set.Kind = "Package"
 	}
-
-	set.Kind = "Package"
 }
 
 func (c Pkg) CommitAction() {
@@ -184,10 +183,7 @@ func (c Pkg) CommitAction() {
 
 	var req lpapi.PackageCommit
 	if err := c.Request.JsonDecode(&req); err != nil {
-		set.Error = &types.ErrorMeta{
-			Code:    "400",
-			Message: err.Error(),
-		}
+		set.Error = types.NewErrorMeta("400", err.Error())
 		return
 	}
 
@@ -203,10 +199,7 @@ func (c Pkg) CommitAction() {
 		}
 	}
 	if channel == nil {
-		set.Error = &types.ErrorMeta{
-			Code:    "400",
-			Message: "Channel Not Found",
-		}
+		set.Error = types.NewErrorMeta("400", "Channel Not Found")
 		return
 	}
 
@@ -216,20 +209,14 @@ func (c Pkg) CommitAction() {
 	}
 	filedata, err := base64.StdEncoding.DecodeString(body64[1])
 	if err != nil {
-		set.Error = &types.ErrorMeta{
-			Code:    "400",
-			Message: err.Error(),
-		}
+		set.Error = types.NewErrorMeta("400", "Package Not Found")
 		return
 	}
 
 	// Save the file to a temporary directory
-	fp, err := os.OpenFile("/tmp/"+req.Name, os.O_RDWR|os.O_CREATE, 0755)
+	fp, err := os.OpenFile(config.Prefix+"/var/tmp/"+req.Name, os.O_RDWR|os.O_CREATE, 0755)
 	if err != nil {
-		set.Error = &types.ErrorMeta{
-			Code:    "500",
-			Message: err.Error(),
-		}
+		set.Error = types.NewErrorMeta("500", err.Error())
 		return
 	}
 	defer fp.Close()
@@ -238,6 +225,7 @@ func (c Pkg) CommitAction() {
 	fp.Seek(0, 0)
 	fp.Truncate(fsize)
 	if _, err = fp.Write(filedata); err != nil {
+		set.Error = types.NewErrorMeta("400", "Package Not Found")
 		set.Error = &types.ErrorMeta{
 			Code:    "500",
 			Message: err.Error(),
@@ -246,24 +234,16 @@ func (c Pkg) CommitAction() {
 	}
 
 	// Export package definition information, checking
-	spec, err := exec.Command("/bin/tar", "-Jxvf", "/tmp/"+req.Name, "-O", pkg_spec_name).Output()
+	spec, err := exec.Command("/bin/tar", "-Jxvf", config.Prefix+"/var/tmp/"+req.Name, "-O", pkg_spec_name).Output()
 	if err != nil {
-
-		set.Error = &types.ErrorMeta{
-			Code:    "500",
-			Message: err.Error(),
-		}
-
-		os.Remove("/tmp/" + req.Name)
+		set.Error = types.NewErrorMeta("500", err.Error())
+		os.Remove(config.Prefix + "/var/tmp/" + req.Name)
 		return
 	}
 
 	var pack_spec lpapi.PackageSpec
 	if err := json.Decode(spec, &pack_spec); err != nil {
-		set.Error = &types.ErrorMeta{
-			Code:    "500",
-			Message: err.Error(),
-		}
+		set.Error = types.NewErrorMeta("500", err.Error())
 		return
 	}
 
@@ -274,10 +254,7 @@ func (c Pkg) CommitAction() {
 		pack_spec.PkgOS, pack_spec.PkgArch,
 	)
 	if !strings.HasPrefix(req.Name, pkg_full_name) {
-		set.Error = &types.ErrorMeta{
-			Code:    "400",
-			Message: "Package Name Error",
-		}
+		set.Error = types.NewErrorMeta("400", "Package Name Error")
 		return
 	}
 
@@ -286,14 +263,9 @@ func (c Pkg) CommitAction() {
 	pn_hash.Write([]byte(strings.ToLower(pkg_full_name)))
 	pkg_id := fmt.Sprintf("%x", pn_hash.Sum(nil))[:16]
 
-	pkgpath := fmt.Sprintf("p/%s", pkg_id)
-
-	rs := data.Data.PvGet(pkgpath)
+	rs := data.Data.PoGet("p", pkg_id)
 	if !rs.NotFound() {
-		set.Error = &types.ErrorMeta{
-			Code:    "400",
-			Message: "Package already exists",
-		}
+		set.Error = types.NewErrorMeta("400", "Package already exists")
 		return
 	}
 
@@ -306,10 +278,7 @@ func (c Pkg) CommitAction() {
 	if st, err := data.Storage.Stat(dir); os.IsNotExist(err) {
 
 		if err = data.Storage.MkdirAll(dir, 0755); err != nil {
-			set.Error = &types.ErrorMeta{
-				Code:    "500",
-				Message: err.Error(),
-			}
+			set.Error = types.NewErrorMeta("500", err.Error())
 			return
 		}
 
@@ -320,33 +289,24 @@ func (c Pkg) CommitAction() {
 		// exec.Command("/bin/chown", "action:action", dir).Output()
 
 	} else if !st.IsDir() {
-		set.Error = &types.ErrorMeta{
-			Code:    "500",
-			Message: "Can not create directory, File exists",
-		}
+		set.Error = types.NewErrorMeta("500", "Can not create directory, File exists")
 		return
 	}
 
 	fop, err := data.Storage.OpenFile(path, os.O_RDWR|os.O_CREATE, 0755)
 	if err != nil {
-		set.Error = &types.ErrorMeta{
-			Code:    "500",
-			Message: err.Error(),
-		}
+		set.Error = types.NewErrorMeta("500", err.Error())
 		return
 	}
 	defer fop.Close()
 
 	if _, err := fop.Write(filedata); err != nil {
-		set.Error = &types.ErrorMeta{
-			Code:    "500",
-			Message: err.Error(),
-		}
+		set.Error = types.NewErrorMeta("500", err.Error())
 		return
 	}
 
 	//
-	// exec.Command("/bin/mv", "/tmp/"+req.Name, path).Output()
+	// exec.Command("/bin/mv", config.Prefix +"/var/tmp/"+req.Name, path).Output()
 	// exec.Command("/bin/chmod", "0644", path).Output()
 	// exec.Command("/bin/chown", "action:action", path).Output()
 
@@ -388,11 +348,8 @@ func (c Pkg) CommitAction() {
 		pack.Groups.Insert(v)
 	}
 
-	if rs = data.Data.PvPut(pkgpath, pack, nil); !rs.OK() {
-		set.Error = &types.ErrorMeta{
-			Code:    "500",
-			Message: "Can not write to database",
-		}
+	if rs = data.Data.PoPut("p", pkg_id, pack, nil); !rs.OK() {
+		set.Error = types.NewErrorMeta("500", "Can not write to database")
 		return
 	}
 
@@ -415,10 +372,7 @@ func (c Pkg) CommitAction() {
 	} else if rs.OK() {
 
 		if err := rs.Decode(&prev_info); err != nil {
-			set.Error = &types.ErrorMeta{
-				Code:    "500",
-				Message: "Server Error",
-			}
+			set.Error = types.NewErrorMeta("500", "Server Error")
 			return
 		}
 
@@ -453,20 +407,14 @@ func (c Pkg) CommitAction() {
 		}
 
 	} else {
-		set.Error = &types.ErrorMeta{
-			Code:    "500",
-			Message: "Server Error",
-		}
+		set.Error = types.NewErrorMeta("500", "Server Error")
 		return
 	}
 
 	prev_info.Meta.Updated = types.MetaTimeNow()
 
 	if rs := data.Data.PvPut("info/"+pack_spec.Name, prev_info, nil); !rs.OK() {
-		set.Error = &types.ErrorMeta{
-			Code:    "500",
-			Message: "Server Error",
-		}
+		set.Error = types.NewErrorMeta("500", "Server Error")
 		return
 	}
 
@@ -475,41 +423,32 @@ func (c Pkg) CommitAction() {
 
 func (c Pkg) SetAction() {
 
-	set := lpapi.Package{}
+	var set struct {
+		types.TypeMeta
+		lpapi.Package
+	}
 	defer c.RenderJson(&set)
 
 	//
-	if err := c.Request.JsonDecode(&set); err != nil {
-		set.Error = &types.ErrorMeta{
-			Code:    "400",
-			Message: "Bad Request",
-		}
+	if err := c.Request.JsonDecode(&set.Package); err != nil {
+		set.Error = types.NewErrorMeta("400", "Bad Request")
 		return
 	}
 
 	if set.Meta.ID == "" { // TODO
-		set.Error = &types.ErrorMeta{
-			Code:    "400",
-			Message: "Bad Request",
-		}
+		set.Error = types.NewErrorMeta("400", "Bad Request")
 		return
 	}
 
-	rs := data.Data.PvGet("p/" + set.Meta.ID)
+	rs := data.Data.PoGet("p", set.Meta.ID)
 	if !rs.OK() {
-		set.Error = &types.ErrorMeta{
-			Code:    "400",
-			Message: "No Package Found",
-		}
+		set.Error = types.NewErrorMeta("400", "No Package Found")
 		return
 	}
 
 	var prev lpapi.Package
 	if err := rs.Decode(&prev); err != nil {
-		set.Error = &types.ErrorMeta{
-			Code:    "500",
-			Message: "Server Error",
-		}
+		set.Error = types.NewErrorMeta("500", "Server Error")
 		return
 	}
 
@@ -522,19 +461,13 @@ func (c Pkg) SetAction() {
 
 		if rs := data.Data.PvGet("channel/" + set.Channel); !rs.OK() ||
 			rs.Decode(&prevChannel) != nil {
-			set.Error = &types.ErrorMeta{
-				Code:    "500",
-				Message: "Server Error",
-			}
+			set.Error = types.NewErrorMeta("500", "Server Error")
 			return
 		}
 
 		if rs := data.Data.PvGet("channel/" + prev.Channel); !rs.OK() ||
 			rs.Decode(&currChannel) != nil {
-			set.Error = &types.ErrorMeta{
-				Code:    "500",
-				Message: "Server Error",
-			}
+			set.Error = types.NewErrorMeta("500", "Server Error")
 			return
 		}
 
@@ -555,7 +488,7 @@ func (c Pkg) SetAction() {
 		data.Data.PvPut("channel/"+currChannel.Meta.ID, currChannel, nil)
 		data.Data.PvPut("channel/"+prevChannel.Meta.ID, prevChannel, nil)
 
-		data.Data.PvPut("p/"+set.Meta.ID, prev, nil)
+		data.Data.PoPut("p", set.Meta.ID, prev, nil)
 	}
 
 	set.Kind = "Package"

@@ -26,10 +26,11 @@ import (
 )
 
 var (
-	Prefix  string
-	Version = "0.0.1.dev"
-	Config  ConfigCommon
-	err     error
+	Prefix      string
+	PrefixWebUI string
+	Version     = "0.0.1.dev"
+	Config      ConfigCommon
+	err         error
 )
 
 type ConfigCommon struct {

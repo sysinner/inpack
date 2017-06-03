@@ -15,24 +15,31 @@
 package ui
 
 import (
+	"path/filepath"
+
 	"code.hooto.com/lessos/lospack/server/config"
 	"github.com/lessos/lessgo/httpsrv"
 )
 
-func NewModule() httpsrv.Module {
+func NewModule(prefix string) httpsrv.Module {
+
+	if prefix == "" {
+		prefix = config.Prefix
+	}
+	prefix = filepath.Clean(prefix)
 
 	module := httpsrv.NewModule("ui")
 
 	module.RouteSet(httpsrv.Route{
 		Type:       httpsrv.RouteTypeStatic,
 		Path:       "~",
-		StaticPath: config.Prefix + "/webui",
+		StaticPath: prefix + "/webui",
 	})
 
 	module.RouteSet(httpsrv.Route{
 		Type:       httpsrv.RouteTypeStatic,
 		Path:       "-",
-		StaticPath: config.Prefix + "/webui/lps/tpl",
+		StaticPath: prefix + "/webui/lps/tpl",
 	})
 
 	return module
