@@ -19,6 +19,8 @@ import (
 	"os"
 
 	cmd_build "code.hooto.com/lessos/lospack/internal/cmd/build"
+	cmd_info "code.hooto.com/lessos/lospack/internal/cmd/info"
+	cmd_pack "code.hooto.com/lessos/lospack/internal/cmd/packfile"
 	cmd_push "code.hooto.com/lessos/lospack/internal/cmd/push"
 )
 
@@ -37,6 +39,21 @@ func main() {
 
 	case "push":
 		if err := cmd_push.Cmd(); err != nil {
+			log.Fatal(err)
+		}
+
+	case "info-list":
+		if err := cmd_info.List(); err != nil {
+			log.Fatal(err)
+		}
+
+	case "info-ico-set":
+		if err := cmd_info.IcoSet(); err != nil {
+			log.Fatal(err)
+		}
+
+	case "packfile-list":
+		if err := cmd_pack.List(); err != nil {
 			log.Fatal(err)
 		}
 

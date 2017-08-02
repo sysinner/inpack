@@ -130,11 +130,26 @@ type PackageInfo struct {
 	Groups      types.ArrayString     `json:"groups,omitempty"`
 	PkgNum      int                   `json:"pkg_num,omitempty"`
 	Homepage    string                `json:"homepage,omitempty"`
+	// Ico11       string                `json:"ico11,omitempty"`
+	// Ico21       string                `json:"ico21,omitempty"`
 }
 
 type PackageInfoList struct {
 	types.TypeMeta `json:",inline"`
 	Items          []PackageInfo `json:"items,omitempty"`
+}
+
+type PackageInfoIco struct {
+	Mime string `json:"mime"`
+	Data string `json:"data"`
+}
+
+type PackageInfoIcoSet struct {
+	types.TypeMeta `json:",inline"`
+	Name           string `json:"name"`
+	Type           string `json:"type"`
+	Size           int64  `json:"size"`
+	Data           string `json:"data,omitempty"`
 }
 
 type PackageGroup struct {

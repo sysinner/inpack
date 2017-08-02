@@ -15,14 +15,23 @@
 package v1 // import "code.hooto.com/lessos/lospack/websrv/v1"
 
 import (
+	"bytes"
+	"encoding/base64"
+	"image"
+	"image/png"
 	"sort"
 	"strings"
 
-	"code.hooto.com/lessos/lospack/lpapi"
-	"code.hooto.com/lessos/lospack/server/data"
+	"code.hooto.com/lessos/iam/iamapi"
+	"code.hooto.com/lessos/iam/iamclient"
 	"code.hooto.com/lynkdb/iomix/skv"
+	"github.com/eryx/imaging"
 	"github.com/lessos/lessgo/httpsrv"
 	"github.com/lessos/lessgo/types"
+
+	"code.hooto.com/lessos/lospack/lpapi"
+	"code.hooto.com/lessos/lospack/server/config"
+	"code.hooto.com/lessos/lospack/server/data"
 )
 
 type PkgInfo struct {
@@ -153,4 +162,127 @@ func (c PkgInfo) SetAction() {
 	}
 
 	set.Kind = "PackageInfo"
+}
+
+func (c PkgInfo) IcoAction() {
+
+	c.AutoRender = false
+
+	var (
+		name     = c.Params.Get("name")
+		ico_type = c.Params.Get("type")
+	)
+	if ico_type != "11" && ico_type != "21" {
+		return
+	}
+
+	var ico lpapi.PackageInfoIco
+	if rs := data.Data.PvGet("ico/" + name + "/" + ico_type); rs.OK() {
+		rs.Decode(&ico)
+		if len(ico.Data) > 10 {
+			bs, err := base64.StdEncoding.DecodeString(ico.Data)
+			if err == nil {
+				c.Response.Out.Header().Set("Content-Type", ico.Mime)
+				c.Response.Out.Write(bs)
+			}
+		}
+	}
+}
+
+func (c PkgInfo) IcoSetAction() {
+
+	var (
+		set types.TypeMeta
+	)
+	defer c.RenderJson(&set)
+
+	{
+		aka, err := iamapi.AccessKeyAuthDecode(c.Session.AuthToken(""))
+		if err != nil {
+			set.Error = types.NewErrorMeta(iamapi.ErrCodeUnauthorized, "Unauthorized")
+			return
+		}
+
+		app_aka, err := config.Config.AccessKeyAuth()
+		if err != nil {
+			set.Error = types.NewErrorMeta(iamapi.ErrCodeInvalidArgument, err.Error())
+			return
+		}
+
+		aksess, err := iamclient.AccessKeySession(app_aka, aka)
+		if err != nil {
+			set.Error = types.NewErrorMeta(iamapi.ErrCodeInvalidArgument, err.Error())
+			return
+		}
+
+		if err := iamclient.AccessKeyAuthValid(aka, aksess.SecretKey); err != nil {
+			set.Error = types.NewErrorMeta(iamapi.ErrCodeUnauthorized, "Unauthorized")
+			return
+		}
+	}
+
+	var req lpapi.PackageInfoIcoSet
+	if err := c.Request.JsonDecode(&req); err != nil {
+		set.Error = types.NewErrorMeta(types.ErrCodeBadArgument, "BadArgument")
+		return
+	}
+
+	if req.Name == "" || len(req.Data) < 10 {
+		set.Error = types.NewErrorMeta(types.ErrCodeBadArgument, "BadArgument")
+		return
+	}
+
+	//
+	img64 := strings.SplitAfter(req.Data, ";base64,")
+	if len(img64) != 2 {
+		set.Error = types.NewErrorMeta(types.ErrCodeBadArgument, "BadArgument")
+		return
+	}
+
+	var info lpapi.PackageInfo
+	if rs := data.Data.PvGet("info/" + req.Name); rs.OK() {
+		rs.Decode(&info)
+	}
+	if info.Meta.Name != req.Name {
+		set.Error = types.NewErrorMeta(types.ErrCodeNotFound, "Package Not Found")
+		return
+	}
+
+	//
+	imgreader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(img64[1]))
+	imgsrc, _, err := image.Decode(imgreader)
+	if err != nil {
+		set.Error = types.NewErrorMeta(types.ErrCodeBadArgument, err.Error())
+		return
+	}
+
+	var imgnew *image.NRGBA
+	if req.Type == "11" {
+		imgnew = imaging.Thumbnail(imgsrc, 256, 256, imaging.CatmullRom)
+	} else if req.Type == "21" {
+		imgnew = imaging.Thumbnail(imgsrc, 512, 256, imaging.CatmullRom)
+	} else {
+		set.Error = types.NewErrorMeta(types.ErrCodeBadArgument, "Invalid Type")
+		return
+	}
+
+	var imgbuf bytes.Buffer
+	err = png.Encode(&imgbuf, imgnew)
+	if err != nil {
+		set.Error = types.NewErrorMeta(types.ErrCodeBadArgument, err.Error())
+		return
+	}
+
+	ico := lpapi.PackageInfoIco{
+		Mime: "image/png",
+		Data: base64.StdEncoding.EncodeToString(imgbuf.Bytes()),
+	}
+
+	if rs := data.Data.PvPut("ico/"+req.Name+"/"+req.Type, ico, &skv.PathWriteOptions{
+		Force: true,
+	}); rs.OK() {
+		set.Kind = "PackageInfo"
+	} else {
+		set.Error = types.NewErrorMeta(types.ErrCodeServerError, "Error "+rs.Bytex().String())
+	}
 }

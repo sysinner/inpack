@@ -184,7 +184,6 @@ func (c Pkg) CommitAction() {
 	defer c.RenderJson(&set)
 
 	{
-
 		aka, err := iamapi.AccessKeyAuthDecode(c.Session.AuthToken(""))
 		if err != nil {
 			set.Error = types.NewErrorMeta(iamapi.ErrCodeUnauthorized, "Unauthorized")
