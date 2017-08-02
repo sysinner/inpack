@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 
 	"code.hooto.com/lessos/iam/iamapi"
+	"code.hooto.com/lessos/iam/iamclient"
 	"code.hooto.com/lynkdb/iomix/connect"
 	"github.com/lessos/lessgo/crypto/idhash"
 	"github.com/lessos/lessgo/encoding/json"
@@ -36,6 +37,7 @@ var (
 type ConfigCommon struct {
 	filepath      string
 	InstanceId    string                   `json:"instance_id"`
+	SecretKey     string                   `json:"secret_key"`
 	HttpPort      uint16                   `json:"http_port,omitempty"`
 	IoConnectors  connect.MultiConnOptions `json:"io_connects"`
 	IamServiceUrl string                   `json:"iam_service_url,omitempty"`
@@ -44,6 +46,10 @@ type ConfigCommon struct {
 
 func (cfg *ConfigCommon) Sync() error {
 	return json.EncodeToFile(cfg, cfg.filepath, "  ")
+}
+
+func (cfg *ConfigCommon) AccessKeyAuth() (iamapi.AccessKeyAuth, error) {
+	return iamclient.NewAccessKeyAuth("app", cfg.InstanceId, cfg.SecretKey, "")
 }
 
 func Init(prefix string) error {
@@ -106,6 +112,10 @@ func Init(prefix string) error {
 		Config.InstanceId = idhash.RandHexString(16)
 	}
 
+	if len(Config.SecretKey) < 30 {
+		Config.SecretKey = idhash.RandBase64String(40)
+	}
+
 	return Config.Sync()
 }
 
@@ -113,7 +123,8 @@ func IamAppInstance() iamapi.AppInstance {
 
 	return iamapi.AppInstance{
 		Meta: types.InnerObjectMeta{
-			ID: Config.InstanceId,
+			ID:   Config.InstanceId,
+			User: "sysadmin",
 		},
 		Version:  Version,
 		AppID:    "lospack",
@@ -127,5 +138,6 @@ func IamAppInstance() iamapi.AppInstance {
 				Desc:      "Package Management",
 			},
 		},
+		SecretKey: Config.SecretKey,
 	}
 }

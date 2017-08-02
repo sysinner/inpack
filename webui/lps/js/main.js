@@ -1,18 +1,18 @@
 var lpLps = {
     base: "/lps/",
-    api:  "/lps/v1/",
+    api: "/lps/v1/",
     nav_reged: false,
-    channel_def : {
-        kind : "PackageChannel",
-        meta : {
-            name : "",
+    channel_def: {
+        kind: "PackageChannel",
+        meta: {
+            name: "",
         },
-        vendor_name : "",
-        vendor_api  : "http://example.com/lps/v1",
-        vendor_site : "http://example.com",
+        vendor_name: "",
+        vendor_api: "http://example.com/lps/v1",
+        vendor_site: "http://example.com",
     },
-    cc_channels : null,
-    cc_groups : null,
+    cc_channels: null,
+    cc_groups: null,
     infols_qry_grpactive: "",
     infols_qry_grpvalue: "Groups",
     pkgls_qry_pkgactive: "",
@@ -20,23 +20,19 @@ var lpLps = {
     pkgls_qry_chanvalue: "Channels",
 }
 
-lpLps.path = function(uri)
-{
+lpLps.path = function(uri) {
     return lpLps.base + uri;
 }
 
-lpLps.apipath = function(uri)
-{
+lpLps.apipath = function(uri) {
     return lpLps.api + uri;
 }
 
-lpLps.tplpath = function(uri)
-{
-    return lpLps.base +"-/"+ uri +".html";
+lpLps.tplpath = function(uri) {
+    return lpLps.base + "-/" + uri + ".html";
 }
 
-lpLps.tplWorkLoader = function(uri)
-{
+lpLps.tplWorkLoader = function(uri) {
     l4i.Ajax(lpLps.tplpath(uri), {
         callback: function(err, data) {
             if (err) {
@@ -49,8 +45,7 @@ lpLps.tplWorkLoader = function(uri)
 }
 
 
-lpLps.Index = function(options)
-{
+lpLps.Index = function(options) {
     if (!lpLps.nav_reged) {
         l4i.UrlEventRegister("lps/pkginfo", lpLps.InfoListRefresh, "lps-nav-menu");
         l4i.UrlEventRegister("lps/pkg", lpLps.PackageList, "lps-nav-menu");
@@ -68,15 +63,14 @@ lpLps.Index = function(options)
                 return;
             }
 
-            $("#"+ options.dstid).html(data);
+            $("#" + options.dstid).html(data);
             l4i.UrlEventHandler("lps/pkginfo");
         },
     })
 }
 
 
-lpLps.InfoListRefresh = function(tplid)
-{
+lpLps.InfoListRefresh = function(tplid) {
     if (!tplid || tplid.indexOf("/") >= 0) {
         tplid = "lps-infols";
     }
@@ -85,76 +79,83 @@ lpLps.InfoListRefresh = function(tplid)
 
     if (document.getElementById(tplid)) {
 
-        uri += "?qry_text="+ $("#"+ tplid +"-qry-text").val();
+        uri += "?qry_text=" + $("#" + tplid + "-qry-text").val();
 
         if (lpLps.infols_qry_grpactive && lpLps.infols_qry_grpactive != "") {
-            uri += "&qry_grpname="+ lpLps.infols_qry_grpactive;
+            uri += "&qry_grpname=" + lpLps.infols_qry_grpactive;
         }
     }
 
-    seajs.use(["ep"], function (EventProxy) {
+    seajs.use(["ep"], function(EventProxy) {
 
-        var ep = EventProxy.create("tpl", "channels", "groups", "info", 
+        var ep = EventProxy.create("tpl", "channels", "groups", "info",
             function(tpl, channels, groups, info) {
 
-            if (tpl) {
-                $("#lps-workbox").html(tpl);
-            }
+                if (tpl) {
+                    $("#lps-workbox").html(tpl);
+                }
 
-            if (channels.error) {
-                return l4i.InnerAlert(alert_id, 'alert-danger', channels.error.message);
-            }
+                if (channels.error) {
+                    return l4i.InnerAlert(alert_id, 'alert-danger', channels.error.message);
+                }
 
-            if (!channels.items || channels.items.length < 1) {
-                return $("#lps-channel-set-alert").css({"display": "block"});
-            }
+                if (!channels.items || channels.items.length < 1) {
+                    return $("#lps-channel-set-alert").css({
+                        "display": "block"
+                    });
+                }
 
-            if (!groups.items || groups.items.length < 1) {
-                return $("#"+ tplid +"-empty-alert").css({"display": "block"});
-            }
+                if (!groups.items || groups.items.length < 1) {
+                    return $("#" + tplid + "-empty-alert").css({
+                        "display": "block"
+                    });
+                }
 
-            if (info.kind != "PackageInfoList" || !info.items) {
-                info.items = [];
-            }
+                if (info.kind != "PackageInfoList" || !info.items) {
+                    info.items = [];
+                }
 
-            if (info.items.length > 0) {
-                $("#"+ tplid +"-empty-alert").css({"display": "none"});
-            } else {
-                $("#"+ tplid +"-empty-alert").css({"display": "block"});
-            }
+                if (info.items.length > 0) {
+                    $("#" + tplid + "-empty-alert").css({
+                        "display": "none"
+                    });
+                } else {
+                    $("#" + tplid + "-empty-alert").css({
+                        "display": "block"
+                    });
+                }
 
-            // refresh info list
-            l4iTemplate.Render({
-                dstid: tplid,
-                tplid: tplid +"-tpl",
-                data:  {
-                    items:  info.items,
-                    groups: groups.items,
-                },
-            });
-
-            // if (tpl) {
-                console.log("G");
+                // refresh info list
                 l4iTemplate.Render({
-                    dstid: tplid +"-grpnav",
-                    tplid: tplid +"-grpnav-tpl",
-                    data:  {
-                        groups       : groups.items,
-                        qry_grpname  : lpLps.infols_qry_grpactive,
-                        qry_grpvalue : lpLps.infols_qry_grpvalue,
+                    dstid: tplid,
+                    tplid: tplid + "-tpl",
+                    data: {
+                        items: info.items,
+                        groups: groups.items,
                     },
                 });
-            // }
 
-            if (!lpLps.cc_channels) {
-                lpLps.cc_channels = channels;
-            }
-            if (!lpLps.cc_groups) {
-                lpLps.cc_groups = groups;
-            }
-        });
+                // if (tpl) {
+                l4iTemplate.Render({
+                    dstid: tplid + "-grpnav",
+                    tplid: tplid + "-grpnav-tpl",
+                    data: {
+                        groups: groups.items,
+                        qry_grpname: lpLps.infols_qry_grpactive,
+                        qry_grpvalue: lpLps.infols_qry_grpvalue,
+                    },
+                });
+                // }
 
-        ep.fail(function (err) {
+                if (!lpLps.cc_channels) {
+                    lpLps.cc_channels = channels;
+                }
+                if (!lpLps.cc_groups) {
+                    lpLps.cc_groups = groups;
+                }
+            });
+
+        ep.fail(function(err) {
             alert("Network Abort, Please try again later");
         });
 
@@ -182,17 +183,16 @@ lpLps.InfoListRefresh = function(tplid)
             });
         }
 
-        l4i.Ajax(lpLps.apipath("pkg-info/list"+ uri), {
+        l4i.Ajax(lpLps.apipath("pkg-info/list" + uri), {
             callback: ep.done("info"),
         });
     });
 }
 
-lpLps.InfoSet = function(name)
-{
-    seajs.use(["ep"], function (EventProxy) {
+lpLps.InfoSet = function(name) {
+    seajs.use(["ep"], function(EventProxy) {
 
-        var ep = EventProxy.create("tpl", "data", function (tpl, data) {
+        var ep = EventProxy.create("tpl", "data", function(tpl, data) {
 
             if (!data || data.kind != "PackageInfo") {
                 return;
@@ -204,21 +204,21 @@ lpLps.InfoSet = function(name)
             }
 
             l4iModal.Open({
-                title  : "Package Info Settings",
-                width  : 600,
-                height : 400,
-                tplsrc : tpl,
-                success : function() {
+                title: "Package Info Settings",
+                width: 600,
+                height: 400,
+                tplsrc: tpl,
+                success: function() {
 
                     l4iTemplate.Render({
                         dstid: "lps-infoset",
                         tplid: "lps-infoset-tpl",
-                        data:  {
+                        data: {
                             info: data,
                         },
                     });
                 },
-                buttons : [
+                buttons: [
                     {
                         onclick: "l4iModal.Close()",
                         title: "Close",
@@ -232,11 +232,11 @@ lpLps.InfoSet = function(name)
             });
         });
 
-        ep.fail(function (err) {
+        ep.fail(function(err) {
             alert("Network Abort, Please try again later");
         });
 
-        l4i.Ajax(lpLps.apipath("pkg-info/entry?name="+ name), {
+        l4i.Ajax(lpLps.apipath("pkg-info/entry?name=" + name), {
             callback: ep.done("data"),
         });
 
@@ -246,20 +246,19 @@ lpLps.InfoSet = function(name)
     });
 }
 
-lpLps.InfoSetCommit = function()
-{
+lpLps.InfoSetCommit = function() {
     var form = $("#lps-infoset"),
         alertid = "#lps-infoset-alert";
     var req = {
         meta: {
-            name : form.find("input[name=name]").val(),
+            name: form.find("input[name=name]").val(),
         },
-        description : form.find("textarea[name=description]").val(),
+        description: form.find("textarea[name=description]").val(),
     }
 
     l4i.Ajax(lpLps.apipath("pkg-info/set"), {
-        method:   "POST",
-        data:     JSON.stringify(req),
+        method: "POST",
+        data: JSON.stringify(req),
         callback: function(err, rsj) {
 
             if (err) {
@@ -278,7 +277,7 @@ lpLps.InfoSetCommit = function()
 
             l4i.InnerAlert(alertid, 'alert-success', "Successful operation");
 
-            window.setTimeout(function(){
+            window.setTimeout(function() {
                 l4iModal.Close();
                 lpLps.InfoListRefresh();
             }, 1000);
@@ -286,11 +285,10 @@ lpLps.InfoSetCommit = function()
     });
 }
 
-lpLps.PackageNew = function()
-{
-    seajs.use(["ep"], function (EventProxy) {
+lpLps.PackageNew = function() {
+    seajs.use(["ep"], function(EventProxy) {
 
-        var ep = EventProxy.create("tpl", "channels", function (tpl, channels) {
+        var ep = EventProxy.create("tpl", "channels", function(tpl, channels) {
 
             if (!channels.items || channels.items.length < 1) {
                 alert("Please setup at least one Channel");
@@ -300,15 +298,15 @@ lpLps.PackageNew = function()
             $("#lps-workbox").html(tpl);
 
             l4iTemplate.Render({
-                dstid : "lps-pkgnew",
-                tplid : "lps-pkgnew-tpl",
-                data  :  {
+                dstid: "lps-pkgnew",
+                tplid: "lps-pkgnew-tpl",
+                data: {
                     channels: channels.items,
                 },
             });
         });
 
-        ep.fail(function (err) {
+        ep.fail(function(err) {
             alert("Network Abort, Please try again later");
         });
 
@@ -326,8 +324,7 @@ lpLps.PackageNew = function()
     });
 }
 
-lpLps.PackageNewCommit = function()
-{
+lpLps.PackageNewCommit = function() {
     var files = document.getElementById('lps-pkgnew-file').files;
 
     if (!files.length) {
@@ -353,17 +350,18 @@ lpLps.PackageNewCommit = function()
                 }
 
                 var req = {
-                    kind : "PackageCommit",
-                    size : file.size,
-                    name : file.name,
-                    data : e.target.result,
-                    sumcheck : "sha1:TODO",
+                    kind: "PackageCommit",
+                    size: file.size,
+                    name: file.name,
+                    data: e.target.result,
+                    sumcheck: "sha1:TODO",
                     channel: $("#lps-pkgnew").find("select[name=channel]").val(),
                 }
+                // console.log(e.target.result);
 
                 l4i.Ajax(lpLps.apipath("pkg/commit"), {
-                    method : "POST",
-                    data   : JSON.stringify(req),
+                    method: "POST",
+                    data: JSON.stringify(req),
                     timeout: 600000,
                     callback: function(err, rsj) {
 
@@ -389,7 +387,7 @@ lpLps.PackageNewCommit = function()
 
                         l4i.InnerAlert("#lps-pkgnew-alert", 'alert-success', "Successfully commit");
 
-                        window.setTimeout(function(){
+                        window.setTimeout(function() {
                             lpLps.tplWorkLoader("pkginfo/list");
                         }, 1000);
                     }
@@ -402,16 +400,14 @@ lpLps.PackageNewCommit = function()
     }
 }
 
-lpLps.PackageList = function()
-{
+lpLps.PackageList = function() {
     lpLps.pkgls_qry_pkgactive = "";
     lpLps.pkgls_qry_chanactive = "";
     lpLps.pkgls_qry_chanvalue = "Channels";
     lpLps.PackageListRefresh();
 }
 
-lpLps.PackageListRefresh = function(tplid, pkgname)
-{
+lpLps.PackageListRefresh = function(tplid, pkgname) {
     if (pkgname) {
         lpLps.pkgls_qry_pkgactive = pkgname;
     }
@@ -422,63 +418,67 @@ lpLps.PackageListRefresh = function(tplid, pkgname)
     var alert_id = "#lps-pkgls-alert",
         uri = "?";
     if (lpLps.pkgls_qry_pkgactive.length > 0) {
-        uri += "qry_pkgname="+ lpLps.pkgls_qry_pkgactive;
+        uri += "qry_pkgname=" + lpLps.pkgls_qry_pkgactive;
     }
 
     if (document.getElementById(tplid)) {
 
-        uri += "&qry_text="+ $("#"+ tplid +"-qry-text").val();
+        uri += "&qry_text=" + $("#" + tplid + "-qry-text").val();
 
         if (lpLps.pkgls_qry_chanactive && lpLps.pkgls_qry_chanactive != "") {
-            uri += "&qry_chanid="+ lpLps.pkgls_qry_chanactive;
+            uri += "&qry_chanid=" + lpLps.pkgls_qry_chanactive;
         }
     }
 
-    seajs.use(["ep"], function (EventProxy) {
+    seajs.use(["ep"], function(EventProxy) {
 
         var ep = EventProxy.create("tpl", "channels", "pkgls",
-            function (tpl, channels, pkgls) {
+            function(tpl, channels, pkgls) {
 
-            if (tpl) {
-                $("#lps-workbox").html(tpl);
-            }
+                if (tpl) {
+                    $("#lps-workbox").html(tpl);
+                }
 
-            if (!pkgls || !pkgls.kind || pkgls.kind != "PackageList" || !pkgls.items) {
-                pkgls.items = [];
-            }
+                if (!pkgls || !pkgls.kind || pkgls.kind != "PackageList" || !pkgls.items) {
+                    pkgls.items = [];
+                }
 
-            if (pkgls.items.length > 0) {
-                $("#"+ tplid +"-empty-alert").css({"display": "none"});
-            } else {
-                $("#"+ tplid +"-empty-alert").css({"display": "block"});
-            }
+                if (pkgls.items.length > 0) {
+                    $("#" + tplid + "-empty-alert").css({
+                        "display": "none"
+                    });
+                } else {
+                    $("#" + tplid + "-empty-alert").css({
+                        "display": "block"
+                    });
+                }
 
-            l4iTemplate.Render({
-                dstid: tplid,
-                tplid: tplid +"-tpl",
-                data:  {
-                    items:    pkgls.items,
-                    channels: channels.items,
-                },
-            });
-
-            if (tpl) {
                 l4iTemplate.Render({
-                    dstid: tplid +"-chans",
-                    tplid: tplid +"-chans-tpl",
-                    data:  {
-                        channels:      channels.items,
-                        qry_chanid:    lpLps.pkgls_qry_chanactive,
-                        qry_chanvalue: lpLps.pkgls_qry_chanvalue,
+                    dstid: tplid,
+                    tplid: tplid + "-tpl",
+                    data: {
+                        items: pkgls.items,
+                        channels: channels.items,
                     },
                 });
-            }
-            if (!lpLps.cc_channels) {
-                lpLps.cc_channels = channels;
-            }
-        });
 
-        ep.fail(function (err) {
+                if (tpl) {
+                    l4iTemplate.Render({
+                        dstid: tplid + "-chans",
+                        tplid: tplid + "-chans-tpl",
+                        data: {
+                            channels: channels.items,
+                            qry_chanid: lpLps.pkgls_qry_chanactive,
+                            qry_chanvalue: lpLps.pkgls_qry_chanvalue,
+                        },
+                    });
+                }
+                if (!lpLps.cc_channels) {
+                    lpLps.cc_channels = channels;
+                }
+            });
+
+        ep.fail(function(err) {
             alert("Network Abort, Please try again later");
         });
 
@@ -498,17 +498,16 @@ lpLps.PackageListRefresh = function(tplid, pkgname)
             });
         }
 
-        l4i.Ajax(lpLps.apipath("pkg/list"+ uri), {
+        l4i.Ajax(lpLps.apipath("pkg/list" + uri), {
             callback: ep.done("pkgls"),
         });
     });
 }
 
-lpLps.PackageSet = function(id)
-{
-    seajs.use(["ep"], function (EventProxy) {
+lpLps.PackageSet = function(id) {
+    seajs.use(["ep"], function(EventProxy) {
 
-        var ep = EventProxy.create("tpl", "channels", "pkg", function (tpl, channels, pkg) {
+        var ep = EventProxy.create("tpl", "channels", "pkg", function(tpl, channels, pkg) {
 
             if (!pkg || pkg.kind != "Package"
                 || !channels || channels.kind != "PackageChannelList") {
@@ -516,22 +515,22 @@ lpLps.PackageSet = function(id)
             }
 
             l4iModal.Open({
-                title  : "Package Settings",
-                width  : 600,
-                height : 400,
-                tplsrc : tpl,
-                success : function() {
+                title: "Package Settings",
+                width: 600,
+                height: 400,
+                tplsrc: tpl,
+                success: function() {
 
                     l4iTemplate.Render({
                         dstid: "lps-pkgset",
                         tplid: "lps-pkgset-tpl",
-                        data:  {
+                        data: {
                             channels: channels,
-                            pkg:      pkg,
+                            pkg: pkg,
                         },
                     });
                 },
-                buttons : [
+                buttons: [
                     {
                         onclick: "l4iModal.Close()",
                         title: "Close",
@@ -550,7 +549,7 @@ lpLps.PackageSet = function(id)
         });
 
 
-        ep.fail(function (err) {
+        ep.fail(function(err) {
             alert("Network Abort, Please try again later");
         });
 
@@ -562,7 +561,7 @@ lpLps.PackageSet = function(id)
             });
         }
 
-        l4i.Ajax(lpLps.apipath("pkg/entry?id="+ id), {
+        l4i.Ajax(lpLps.apipath("pkg/entry?id=" + id), {
             callback: ep.done("pkg"),
         });
 
@@ -572,18 +571,17 @@ lpLps.PackageSet = function(id)
     });
 }
 
-lpLps.PackageSetCommit = function()
-{
+lpLps.PackageSetCommit = function() {
     var req = {
         meta: {
-            id : $("#lps-pkgset").find("input[name=id]").val(),
+            id: $("#lps-pkgset").find("input[name=id]").val(),
         },
         channel: $("#lps-pkgset").find("select[name=channel]").val(),
     }
 
     l4i.Ajax(lpLps.apipath("pkg/set"), {
-        method : "POST",
-        data   : JSON.stringify(req),
+        method: "POST",
+        data: JSON.stringify(req),
         callback: function(err, rsj) {
 
             if (!rsj || rsj.kind != "Package") {
@@ -597,23 +595,22 @@ lpLps.PackageSetCommit = function()
 
             l4i.InnerAlert("#lps-pkgset-alert", 'alert-success', "Successful operation");
 
-            window.setTimeout(function(){
+            window.setTimeout(function() {
                 l4iModal.Close();
                 lpLps.PackageListRefresh();
             }, 1000);
         },
-        error   : function(xhr, textStatus, error) {
-            l4i.InnerAlert("#lps-pkgset-alert", 'alert-danger', textStatus+' '+xhr.responseText);
+        error: function(xhr, textStatus, error) {
+            l4i.InnerAlert("#lps-pkgset-alert", 'alert-danger', textStatus + ' ' + xhr.responseText);
         }
     });
 }
 
 
-lpLps.ChannelListRefresh = function()
-{
-    seajs.use(["ep"], function (EventProxy) {
+lpLps.ChannelListRefresh = function() {
+    seajs.use(["ep"], function(EventProxy) {
 
-        var ep = EventProxy.create('tpl', 'data', function (tpl, rsj) {
+        var ep = EventProxy.create('tpl', 'data', function(tpl, rsj) {
 
             if (!rsj) {
                 rsj = {};
@@ -639,13 +636,13 @@ lpLps.ChannelListRefresh = function()
             l4iTemplate.Render({
                 dstid: "lps-channells",
                 tplid: "lps-channells-tpl",
-                data:  {
+                data: {
                     channels: rsj.items,
                 },
             });
         });
 
-        ep.fail(function (err) {
+        ep.fail(function(err) {
             // TODO
             alert("ChannelSet error, Please try again later (EC:lps-channelset)");
         });
@@ -660,9 +657,8 @@ lpLps.ChannelListRefresh = function()
     });
 }
 
-lpLps.ChannelDelete = function(id)
-{
-    l4i.Ajax(lpLps.apipath("channel/delete?id="+ id), {
+lpLps.ChannelDelete = function(id) {
+    l4i.Ajax(lpLps.apipath("channel/delete?id=" + id), {
         callback: function(err, rsj) {
 
             if (!rsj || rsj.kind != "PackageChannel") {
@@ -680,17 +676,16 @@ lpLps.ChannelDelete = function(id)
                 lpLps.ChannelListRefresh();
             }, 1000);
         },
-        error   : function(xhr, textStatus, error) {
-            l4i.InnerAlert("#p4e5v1", 'alert-danger', textStatus+' '+xhr.responseText);
+        error: function(xhr, textStatus, error) {
+            l4i.InnerAlert("#p4e5v1", 'alert-danger', textStatus + ' ' + xhr.responseText);
         }
     });
 }
 
-lpLps.ChannelSet = function(id)
-{
-    seajs.use(["ep"], function (EventProxy) {
+lpLps.ChannelSet = function(id) {
+    seajs.use(["ep"], function(EventProxy) {
 
-        var ep = EventProxy.create('tpl', 'data', function (tpl, rsj) {
+        var ep = EventProxy.create('tpl', 'data', function(tpl, rsj) {
 
             if (!rsj || rsj.error || !rsj.kind || rsj.kind != "PackageChannel") {
                 rsj = l4i.Clone(lpLps.channel_def);
@@ -705,14 +700,14 @@ lpLps.ChannelSet = function(id)
             l4iTemplate.Render({
                 dstid: "lps-channelset",
                 tplid: "lps-channelset-tpl",
-                data:  {
+                data: {
                     actionTitle: ((rsj.meta.id == "") ? "New Package Channel" : "Setting Channel"),
                     channel: rsj,
                 },
             });
         });
 
-        ep.fail(function (err) {
+        ep.fail(function(err) {
             // TODO
             alert("ChannelSet error, Please try again later (EC:lps-channelset)");
         });
@@ -724,7 +719,7 @@ lpLps.ChannelSet = function(id)
         if (!id) {
             ep.emit('data', "");
         } else {
-            l4i.Ajax(lpLps.apipath("channel/entry?id="+ id), {
+            l4i.Ajax(lpLps.apipath("channel/entry?id=" + id), {
                 callback: ep.done('data'),
             });
         }
@@ -733,23 +728,22 @@ lpLps.ChannelSet = function(id)
 
 
 
-lpLps.ChannelSetCommit = function()
-{
+lpLps.ChannelSetCommit = function() {
     var req = {
-        kind : "Channel",
+        kind: "Channel",
         meta: {
-            id   : $("#lps-channelset").find("input[name=id]").val(),
-            name : $("#lps-channelset").find("input[name=name]").val(),
+            id: $("#lps-channelset").find("input[name=id]").val(),
+            name: $("#lps-channelset").find("input[name=name]").val(),
         },
-        vendor_site : $("#lps-channelset").find("input[name=vendor_site]").val(),
-        vendor_name : $("#lps-channelset").find("input[name=vendor_name]").val(),
-        vendor_api  : $("#lps-channelset").find("input[name=vendor_api]").val(),
+        vendor_site: $("#lps-channelset").find("input[name=vendor_site]").val(),
+        vendor_name: $("#lps-channelset").find("input[name=vendor_name]").val(),
+        vendor_api: $("#lps-channelset").find("input[name=vendor_api]").val(),
     };
     var alertid = "#lps-channelset-alert";
 
     l4i.Ajax(lpLps.apipath("channel/set"), {
-        method : "POST",
-        data   : JSON.stringify(req),
+        method: "POST",
+        data: JSON.stringify(req),
         callback: function(err, rsj) {
 
             if (!rsj || rsj.kind != "PackageChannel") {
@@ -762,7 +756,7 @@ lpLps.ChannelSetCommit = function()
 
             l4i.InnerAlert(alertid, 'alert-success', "Successful operation");
 
-            window.setTimeout(function(){
+            window.setTimeout(function() {
                 lpLps.cc_channels = null;
                 lpLps.ChannelListRefresh();
             }, 2000);
@@ -772,17 +766,14 @@ lpLps.ChannelSetCommit = function()
 
 lpLps.channelImportArray = [];
 
-lpLps.ChannelImport = function()
-{
+lpLps.ChannelImport = function() {
     lpLps.channelImportArray = [];
     lpLps.tplWorkLoader("channel/import");
 }
 
-lpLps.ChannelImportConfirm = function()
-{
+lpLps.ChannelImportConfirm = function() {
     var api = $("#lps-channel-import-api").val();
-    // console.log(api);
-    $("#lps-channel-import-btn").attr('disabled','disabled');
+    $("#lps-channel-import-btn").attr('disabled', 'disabled');
 
     l4i.InnerAlert("#p4e5v1", 'alert-info', "Pending");
 
@@ -803,27 +794,26 @@ lpLps.ChannelImportConfirm = function()
             lpLps.channelImportArray = rsj.items;
 
             l4iTemplate.Render({
-                dstid : "lps-channel-import",
-                tplid : "lps-channel-import-tpl",
-                data  : {
+                dstid: "lps-channel-import",
+                tplid: "lps-channel-import-tpl",
+                data: {
                     channels: rsj.items,
                 },
-                success : function() {
+                success: function() {
                     $("#lps-channel-import-btn").text("Confirm and Save");
                     $("#lps-channel-import-btn").attr("onclick", 'lpLps.ChannelImportSave()');
                     $("#lps-channel-import-btn").removeAttr("disabled");
                 },
             });
         },
-        error : function() {
+        error: function() {
             // TODO
             l4i.InnerAlert("#p4e5v1", 'alert-danger', "No Package Service Detected from this API");
         }
     });
 }
 
-lpLps.ChannelImportSave = function()
-{
+lpLps.ChannelImportSave = function() {
     var chs = [];
     $("#lps-channel-import").find("input[name='lps-channel-import-ids']:checked").each(function() {
         chs.push($(this).val());
@@ -840,13 +830,13 @@ lpLps.ChannelImportSave = function()
         channel.kind = "PackageChannel";
 
         l4i.Ajax(lpLps.apipath("channel/set"), {
-            method  : "POST",
-            data    : JSON.stringify(channel),
-            async   : false,
+            method: "POST",
+            data: JSON.stringify(channel),
+            async: false,
             callback: function(err, rsj) {
 
                 if (!rsj) {
-                    $("#lps-channel-import-id-"+ channel.meta.id).text("Failed");
+                    $("#lps-channel-import-id-" + channel.meta.id).text("Failed");
                     return;
                 }
 
@@ -857,23 +847,22 @@ lpLps.ChannelImportSave = function()
                         msg = rsj.error.message;
                     }
 
-                    $("#lps-channel-import-id-"+ channel.meta.id).text(msg);
+                    $("#lps-channel-import-id-" + channel.meta.id).text(msg);
                     return;
                 }
 
-                $("#lps-channel-import-id-"+ channel.meta.id).text("OK");
+                $("#lps-channel-import-id-" + channel.meta.id).text("OK");
             },
-            error   : function(xhr, textStatus, error) {
-                $("#lps-channel-import-id-"+ channel.meta.id).text(textStatus+' '+xhr.responseText);
-                // l4i.InnerAlert("#d8e0m0", 'alert-danger', textStatus+' '+xhr.responseText);
+            error: function(xhr, textStatus, error) {
+                $("#lps-channel-import-id-" + channel.meta.id).text(textStatus + ' ' + xhr.responseText);
+            // l4i.InnerAlert("#d8e0m0", 'alert-danger', textStatus+' '+xhr.responseText);
             }
         });
     }
 }
 
 
-lpLps.UtilResourceSizeFormat = function(size, tofix)
-{
+lpLps.UtilResourceSizeFormat = function(size, tofix) {
     var ms = [
         [7, "ZB"],
         [6, "EB"],
@@ -890,7 +879,7 @@ lpLps.UtilResourceSizeFormat = function(size, tofix)
 
     for (var i in ms) {
         if (size >= Math.pow(1024, ms[i][0])) {
-            return (size / Math.pow(1024, ms[i][0])).toFixed(tofix) +" "+ ms[i][1];
+            return (size / Math.pow(1024, ms[i][0])).toFixed(tofix) + " " + ms[i][1];
         }
     }
 

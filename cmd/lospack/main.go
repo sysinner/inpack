@@ -19,6 +19,7 @@ import (
 	"os"
 
 	cmd_build "code.hooto.com/lessos/lospack/internal/cmd/build"
+	cmd_push "code.hooto.com/lessos/lospack/internal/cmd/push"
 )
 
 func main() {
@@ -31,6 +32,11 @@ func main() {
 
 	case "build":
 		if err := cmd_build.Cmd(); err != nil {
+			log.Fatal(err)
+		}
+
+	case "push":
+		if err := cmd_push.Cmd(); err != nil {
 			log.Fatal(err)
 		}
 

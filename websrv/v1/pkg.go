@@ -25,6 +25,8 @@ import (
 	"sort"
 	"strings"
 
+	"code.hooto.com/lessos/iam/iamapi"
+	"code.hooto.com/lessos/iam/iamclient"
 	"code.hooto.com/lynkdb/iomix/skv"
 	"github.com/lessos/lessgo/encoding/json"
 	"github.com/lessos/lessgo/httpsrv"
@@ -180,6 +182,32 @@ func (c Pkg) CommitAction() {
 
 	set := types.TypeMeta{}
 	defer c.RenderJson(&set)
+
+	{
+
+		aka, err := iamapi.AccessKeyAuthDecode(c.Session.AuthToken(""))
+		if err != nil {
+			set.Error = types.NewErrorMeta(iamapi.ErrCodeUnauthorized, "Unauthorized")
+			return
+		}
+
+		app_aka, err := config.Config.AccessKeyAuth()
+		if err != nil {
+			set.Error = types.NewErrorMeta(iamapi.ErrCodeInvalidArgument, err.Error())
+			return
+		}
+
+		aksess, err := iamclient.AccessKeySession(app_aka, aka)
+		if err != nil {
+			set.Error = types.NewErrorMeta(iamapi.ErrCodeInvalidArgument, err.Error())
+			return
+		}
+
+		if err := iamclient.AccessKeyAuthValid(aka, aksess.SecretKey); err != nil {
+			set.Error = types.NewErrorMeta(iamapi.ErrCodeUnauthorized, "Unauthorized")
+			return
+		}
+	}
 
 	var req lpapi.PackageCommit
 	if err := c.Request.JsonDecode(&req); err != nil {
