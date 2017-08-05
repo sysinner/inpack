@@ -114,6 +114,7 @@ type Package struct {
 	Keywords    []string              `json:"keywords,omitempty"`
 	Built       types.MetaTime        `json:"built,omitempty"`
 	Channel     string                `json:"channel,omitempty"`
+	OpPerm      uint8                 `json:"op_perm,omitempty"`
 }
 
 type PackageList struct {
@@ -130,6 +131,7 @@ type PackageInfo struct {
 	Groups      types.ArrayString     `json:"groups,omitempty"`
 	PkgNum      int                   `json:"pkg_num,omitempty"`
 	Homepage    string                `json:"homepage,omitempty"`
+	OpPerm      uint8                 `json:"op_perm,omitempty"`
 	// Ico11       string                `json:"ico11,omitempty"`
 	// Ico21       string                `json:"ico21,omitempty"`
 }
@@ -172,6 +174,13 @@ type PackageChannel struct {
 	VendorAPI      string                `json:"vendor_api,omitempty"`
 	VendorSite     string                `json:"vendor_site,omitempty"`
 	Upstream       string                `json:"upstream,omitempty"`
+	Roles          *PackageChannelRoles  `json:"roles,omitempty"`
+}
+
+type PackageChannelRoles struct {
+	Create types.ArrayUint32 `json:"create,omitempty"`
+	Read   types.ArrayUint32 `json:"read,omitempty"`
+	Write  types.ArrayUint32 `json:"write,omitempty"`
 }
 
 type PackageChannelList struct {
@@ -196,4 +205,19 @@ type Version struct {
 	OS      string `json:"os"`
 	Arch    string `json:"arch"`
 	Sum     string `json:"sum"`
+}
+
+const (
+	OpPermRead   uint8 = 1 << 0
+	OpPermWrite  uint8 = 1 << 1
+	OpPermCreate uint8 = 1 << 2
+	OpPermDelete uint8 = 1 << 3
+	OpPermList   uint8 = 1 << 4
+	OpPermPut    uint8 = OpPermWrite | OpPermCreate
+	OpPermMirror uint8 = OpPermRead | OpPermList
+	OpPermAll    uint8 = OpPermRead | OpPermWrite | OpPermCreate | OpPermDelete | OpPermList
+)
+
+func OpPermAllow(p, perms uint8) bool {
+	return (perms & p) == perms
 }

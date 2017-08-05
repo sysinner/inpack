@@ -15,19 +15,27 @@
 package v1 // import "code.hooto.com/lessos/lospack/websrv/v1"
 
 import (
+	"code.hooto.com/lessos/iam/iamclient"
 	"github.com/lessos/lessgo/httpsrv"
+	"github.com/lessos/lessgo/types"
 )
 
-func NewModule() httpsrv.Module {
+type Status struct {
+	*httpsrv.Controller
+}
 
-	module := httpsrv.NewModule("v1")
+func (c Status) InfoAction() {
 
-	module.ControllerRegister(new(Pkg))
-	module.ControllerRegister(new(PkgInfo))
-	module.ControllerRegister(new(Channel))
-	module.ControllerRegister(new(Group))
-	module.ControllerRegister(new(Fs))
-	module.ControllerRegister(new(Status))
+	var sets struct {
+		types.TypeMeta
+		UserChannelWrite bool `json:"user_channel_write"`
+	}
+	defer c.RenderJson(&sets)
 
-	return module
+	us, _ := iamclient.SessionInstance(c.Session)
+	if us.IsLogin() && us.UserName == "sysadmin" {
+		sets.UserChannelWrite = true
+	}
+
+	sets.Kind = "StatusInfo"
 }

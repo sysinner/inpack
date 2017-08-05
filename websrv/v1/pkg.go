@@ -84,8 +84,19 @@ func (c Pkg) ListAction() {
 		qry_pkgname = c.Params.Get("qry_pkgname")
 		qry_chanid  = c.Params.Get("qry_chanid")
 		qry_text    = c.Params.Get("qry_text")
-		limit       = 100
+		limit       = int(c.Params.Int64("limit"))
 	)
+
+	if qry_pkgname == "" {
+		ls.Error = types.NewErrorMeta(types.ErrCodeBadArgument, "Package Name Not Found")
+		return
+	}
+
+	if limit < 1 {
+		limit = 100
+	} else if limit > 200 {
+		limit = 200
+	}
 
 	rs := data.Data.PoScan("p", []byte{}, []byte{}, 1000)
 	if !rs.OK() {
@@ -96,10 +107,12 @@ func (c Pkg) ListAction() {
 		return
 	}
 
+	us, _ := iamclient.SessionInstance(c.Session)
+
 	rs.KvEach(func(entry *skv.ResultEntry) int {
 
 		if len(ls.Items) >= limit {
-			return 0
+			// TOPO return 0
 		}
 
 		var set lpapi.Package
@@ -117,6 +130,12 @@ func (c Pkg) ListAction() {
 				return 0
 			}
 
+			if us.IsLogin() && (us.UserName == set.Meta.User || us.UserName == "sysadmin") {
+				set.OpPerm = lpapi.OpPermRead | lpapi.OpPermWrite
+			} else {
+				set.OpPerm = lpapi.OpPermRead
+			}
+
 			ls.Items = append(ls.Items, set)
 		}
 
@@ -126,6 +145,10 @@ func (c Pkg) ListAction() {
 	sort.Slice(ls.Items, func(i, j int) bool {
 		return ls.Items[i].Meta.Updated > ls.Items[j].Meta.Updated
 	})
+
+	if len(ls.Items) > limit {
+		ls.Items = ls.Items[:limit]
+	}
 
 	ls.Kind = "PackageList"
 }
@@ -183,29 +206,28 @@ func (c Pkg) CommitAction() {
 	set := types.TypeMeta{}
 	defer c.RenderJson(&set)
 
-	{
-		aka, err := iamapi.AccessKeyAuthDecode(c.Session.AuthToken(""))
-		if err != nil {
-			set.Error = types.NewErrorMeta(iamapi.ErrCodeUnauthorized, "Unauthorized")
-			return
-		}
+	//
+	aka, err := iamapi.AccessKeyAuthDecode(c.Session.AuthToken(""))
+	if err != nil {
+		set.Error = types.NewErrorMeta(iamapi.ErrCodeUnauthorized, "Unauthorized")
+		return
+	}
 
-		app_aka, err := config.Config.AccessKeyAuth()
-		if err != nil {
-			set.Error = types.NewErrorMeta(iamapi.ErrCodeInvalidArgument, err.Error())
-			return
-		}
+	app_aka, err := config.Config.AccessKeyAuth()
+	if err != nil {
+		set.Error = types.NewErrorMeta(iamapi.ErrCodeInvalidArgument, err.Error())
+		return
+	}
 
-		aksess, err := iamclient.AccessKeySession(app_aka, aka)
-		if err != nil {
-			set.Error = types.NewErrorMeta(iamapi.ErrCodeInvalidArgument, err.Error())
-			return
-		}
+	aksess, err := iamclient.AccessKeySession(app_aka, aka)
+	if err != nil {
+		set.Error = types.NewErrorMeta(iamapi.ErrCodeInvalidArgument, err.Error())
+		return
+	}
 
-		if err := iamclient.AccessKeyAuthValid(aka, aksess.SecretKey); err != nil {
-			set.Error = types.NewErrorMeta(iamapi.ErrCodeUnauthorized, "Unauthorized")
-			return
-		}
+	if err := iamclient.AccessKeyAuthValid(aka, aksess.SecretKey); err != nil {
+		set.Error = types.NewErrorMeta(iamapi.ErrCodeUnauthorized, "Unauthorized")
+		return
 	}
 
 	var req lpapi.PackageCommit
@@ -227,6 +249,13 @@ func (c Pkg) CommitAction() {
 	}
 	if channel == nil {
 		set.Error = types.NewErrorMeta("400", "Channel Not Found")
+		return
+	}
+
+	if channel.Meta.User != aksess.User &&
+		(channel.Roles == nil || !channel.Roles.Write.MatchAny(aksess.Roles)) {
+		set.Error = types.NewErrorMeta(iamapi.ErrCodeAccessDenied,
+			"AccessDenied to Channel ("+channel.Meta.Name+")")
 		return
 	}
 
@@ -355,6 +384,7 @@ func (c Pkg) CommitAction() {
 		Meta: types.InnerObjectMeta{
 			ID:      pkg_id,
 			Name:    pack_spec.Name,
+			User:    aksess.User,
 			Created: types.MetaTimeNow(),
 			Updated: types.MetaTimeNow(),
 		},
@@ -445,6 +475,9 @@ func (c Pkg) CommitAction() {
 		return
 	}
 
+	channel.Packages++
+	data.Data.PvPut("channel/"+channel.Meta.ID, channel, nil)
+
 	set.Kind = "PackageCommit"
 }
 
@@ -476,6 +509,12 @@ func (c Pkg) SetAction() {
 	var prev lpapi.Package
 	if err := rs.Decode(&prev); err != nil {
 		set.Error = types.NewErrorMeta("500", "Server Error")
+		return
+	}
+
+	us, _ := iamclient.SessionInstance(c.Session)
+	if !us.IsLogin() || (us.UserName != prev.Meta.User && us.UserName != "sysadmin") {
+		set.Error = types.NewErrorMeta(iamapi.ErrCodeAccessDenied, "AccessDenied")
 		return
 	}
 

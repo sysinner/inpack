@@ -17,13 +17,15 @@ package v1 // import "code.hooto.com/lessos/lospack/websrv/v1"
 import (
 	"regexp"
 
+	"code.hooto.com/lessos/iam/iamapi"
+	"code.hooto.com/lessos/iam/iamclient"
+	"code.hooto.com/lynkdb/iomix/skv"
 	"github.com/lessos/lessgo/crypto/idhash"
 	"github.com/lessos/lessgo/httpsrv"
 	"github.com/lessos/lessgo/types"
 
 	"code.hooto.com/lessos/lospack/lpapi"
 	"code.hooto.com/lessos/lospack/server/data"
-	"code.hooto.com/lynkdb/iomix/skv"
 )
 
 var (
@@ -33,6 +35,12 @@ var (
 
 type Channel struct {
 	*httpsrv.Controller
+	us iamapi.UserSession
+}
+
+func (c *Channel) Init() int {
+	c.us, _ = iamclient.SessionInstance(c.Session)
+	return 0
 }
 
 func (c Channel) ListAction() {
@@ -46,7 +54,11 @@ func (c Channel) ListAction() {
 
 			var set lpapi.PackageChannel
 			if err := entry.Decode(&set); err == nil {
-				sets.Items = append(sets.Items, set)
+				if c.us.UserName == "sysadmin" ||
+					c.us.UserName == set.Meta.User ||
+					(set.Roles != nil && set.Roles.Read.MatchAny(c.us.Roles)) {
+					sets.Items = append(sets.Items, set)
+				}
 			}
 
 			return 0
@@ -58,31 +70,22 @@ func (c Channel) ListAction() {
 
 func (c Channel) EntryAction() {
 
-	set := lpapi.PackageChannel{}
+	var set lpapi.PackageChannel
 	defer c.RenderJson(&set)
 
 	if c.Params.Get("id") == "" {
-		set.Error = &types.ErrorMeta{
-			Code:    "404",
-			Message: "Channel Not Found",
-		}
+		set.Error = types.NewErrorMeta("404", "Channel Not Found")
 		return
 	}
 
 	rs := data.Data.PvGet("channel/" + c.Params.Get("id"))
 	if !rs.OK() {
-		set.Error = &types.ErrorMeta{
-			Code:    "404",
-			Message: "Channel Not Found",
-		}
+		set.Error = types.NewErrorMeta("404", "Channel Not Found")
 		return
 	}
 
 	if err := rs.Decode(&set); err != nil {
-		set.Error = &types.ErrorMeta{
-			Code:    "404",
-			Message: "Channel Not Found",
-		}
+		set.Error = types.NewErrorMeta("404", "Channel Not Found")
 		return
 	}
 
@@ -95,10 +98,7 @@ func (c Channel) SetAction() {
 	defer c.RenderJson(&set)
 
 	if err := c.Request.JsonDecode(&set); err != nil {
-		set.Error = &types.ErrorMeta{
-			Code:    "400",
-			Message: err.Error(),
-		}
+		set.Error = types.NewErrorMeta("400", err.Error())
 		return
 	}
 
@@ -107,10 +107,12 @@ func (c Channel) SetAction() {
 	}
 
 	if !channel_vendor_re.MatchString(set.VendorName) {
-		set.Error = &types.ErrorMeta{
-			Code:    "400",
-			Message: "Bad Request: Invalid VendorName",
-		}
+		set.Error = types.NewErrorMeta("400", "Bad Request: Invalid VendorName")
+		return
+	}
+
+	if !c.us.IsLogin() || c.us.UserName != "sysadmin" {
+		set.Error = types.NewErrorMeta(iamapi.ErrCodeAccessDenied, "AccessDenied")
 		return
 	}
 
@@ -119,40 +121,40 @@ func (c Channel) SetAction() {
 		var prev lpapi.PackageChannel
 
 		if err := rs.Decode(&prev); err != nil {
-			set.Error = &types.ErrorMeta{
-				Code:    "500",
-				Message: "Server Error",
-			}
+			set.Error = types.NewErrorMeta("500", "Server Error")
 			return
 		}
 
 		prev.VendorName = set.VendorName
 		prev.VendorAPI = set.VendorAPI
 		prev.VendorSite = set.VendorSite
-		prev.Meta.Updated = types.MetaTimeNow()
+		prev.Roles = set.Roles
+
 		prev.Kind = ""
 
-		if rs := data.Data.PvPut("channel/"+set.Meta.ID, prev, nil); !rs.OK() {
-			set.Error = &types.ErrorMeta{
-				Code:    "500",
-				Message: "Can not write to database: " + rs.Bytex().String(),
-			}
-			return
+		if prev.Meta.User == "" {
+			prev.Meta.User = "sysadmin"
 		}
+
+		set = prev
 
 	} else {
 
+		set.Meta.User = c.us.UserName
 		set.Meta.Created = types.MetaTimeNow()
-		set.Meta.Updated = types.MetaTimeNow()
-		set.Kind = ""
 
-		if rs := data.Data.PvPut("channel/"+set.Meta.ID, set, nil); !rs.OK() {
-			set.Error = &types.ErrorMeta{
-				Code:    "500",
-				Message: "Can not write to database: " + rs.Bytex().String(),
-			}
-			return
+		if set.Roles == nil {
+			set.Roles = &lpapi.PackageChannelRoles{}
+			set.Roles.Read.Set(100)
 		}
+	}
+
+	set.Meta.Updated = types.MetaTimeNow()
+	set.Kind = ""
+
+	if rs := data.Data.PvPut("channel/"+set.Meta.ID, set, nil); !rs.OK() {
+		set.Error = types.NewErrorMeta("500", "Can not write to database: "+rs.Bytex().String())
+		return
 	}
 
 	set.Kind = "PackageChannel"
@@ -163,37 +165,29 @@ func (c Channel) DeleteAction() {
 	set := lpapi.PackageChannel{}
 	defer c.RenderJson(&set)
 
+	if !c.us.IsLogin() || c.us.UserName != "sysadmin" {
+		set.Error = types.NewErrorMeta(iamapi.ErrCodeAccessDenied, "AccessDenied")
+		return
+	}
+
 	rs := data.Data.PvGet("channel/" + c.Params.Get("id"))
 	if !rs.OK() {
-
-		set.Error = &types.ErrorMeta{
-			Code:    "404",
-			Message: "Channel Not Found",
-		}
+		set.Error = types.NewErrorMeta("404", "Channel Not Found")
 		return
 	}
 
 	if err := rs.Decode(&set); err != nil {
-		set.Error = &types.ErrorMeta{
-			Code:    "404",
-			Message: "Channel Not Found",
-		}
+		set.Error = types.NewErrorMeta("404", "Channel Not Found")
 		return
 	}
 
 	if set.Packages > 0 {
-		set.Error = &types.ErrorMeta{
-			Code:    "400",
-			Message: "Can not delete non-empty Channel",
-		}
+		set.Error = types.NewErrorMeta("400", "Can not delete non-empty Channel")
 		return
 	}
 
 	if rs := data.Data.PvDel("channel/"+c.Params.Get("id"), nil); !rs.OK() {
-		set.Error = &types.ErrorMeta{
-			Code:    "500",
-			Message: "Server Error",
-		}
+		set.Error = types.NewErrorMeta("500", "Server Error")
 		return
 	}
 
