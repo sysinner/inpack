@@ -55,9 +55,9 @@ func (c PkgInfo) ListAction() {
 	defer c.RenderJson(&sets)
 
 	var (
-		qry_text    = c.Params.Get("qry_text")
-		qry_grpname = c.Params.Get("qry_grpname")
-		limit       = 100
+		q_text  = c.Params.Get("q")
+		q_group = c.Params.Get("group")
+		limit   = 100
 	)
 
 	rs := data.Data.PvScan("info/", "", "", 10000)
@@ -77,11 +77,11 @@ func (c PkgInfo) ListAction() {
 		var set lpapi.PackageInfo
 		if err := entry.Decode(&set); err == nil {
 
-			if qry_text != "" && !strings.Contains(set.Meta.Name, qry_text) {
+			if q_text != "" && !strings.Contains(set.Meta.Name, q_text) {
 				return 0
 			}
 
-			if qry_grpname != "" && !set.Groups.Has(qry_grpname) {
+			if q_group != "" && !set.Groups.Has(q_group) {
 				return 0
 			}
 
@@ -109,12 +109,13 @@ func (c PkgInfo) EntryAction() {
 	set := lpapi.PackageInfo{}
 	defer c.RenderJson(&set)
 
-	if c.Params.Get("name") == "" {
-		set.Error = types.NewErrorMeta("404", "PackageInfo Not Found")
+	name := c.Params.Get("name")
+	if !lpapi.PackageNameRe.MatchString(name) {
+		set.Error = types.NewErrorMeta("404", "Invalid Package Name")
 		return
 	}
 
-	rs := data.Data.PvGet("info/" + c.Params.Get("name"))
+	rs := data.Data.PvGet("info/" + strings.ToLower(name))
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("404", "PackageInfo Not Found")
 		return
@@ -138,7 +139,12 @@ func (c PkgInfo) SetAction() {
 		return
 	}
 
-	if rs := data.Data.PvGet("info/" + set.Meta.Name); !rs.OK() {
+	if !lpapi.PackageNameRe.MatchString(set.Meta.Name) {
+		set.Error = types.NewErrorMeta("404", "PackageInfo Not Found")
+		return
+	}
+
+	if rs := data.Data.PvGet("info/" + strings.ToLower(set.Meta.Name)); !rs.OK() {
 		set.Error = types.NewErrorMeta("400", "PackageInfo Not Found")
 		return
 	} else {
@@ -156,12 +162,12 @@ func (c PkgInfo) SetAction() {
 			return
 		}
 
-		if prev.Description != set.Description {
-			prev.Description = set.Description
+		if prev.Project.Description != set.Project.Description {
+			prev.Project.Description = set.Project.Description
 		}
 
 		prev.Kind = ""
-		if rs := data.Data.PvPut("info/"+set.Meta.Name, prev, nil); !rs.OK() {
+		if rs := data.Data.PvPut("info/"+strings.ToLower(set.Meta.Name), prev, nil); !rs.OK() {
 			set.Error = types.NewErrorMeta("500", "Server Error")
 			return
 		}
@@ -179,9 +185,12 @@ func (c PkgInfo) IcoAction() {
 		ico_type = c.Params.Get("type")
 		ico_size = int(c.Params.Int64("size"))
 	)
-	if name == "" || len(name) > 30 {
+
+	if !lpapi.PackageNameRe.MatchString(name) {
 		return
 	}
+	name = strings.ToLower(name)
+
 	if ico_type != "11" && ico_type != "21" {
 		ico_type = "11"
 	}
@@ -240,6 +249,29 @@ func (c PkgInfo) IcoSetAction() {
 	)
 	defer c.RenderJson(&set)
 
+	var req lpapi.PackageInfoIcoSet
+	if err := c.Request.JsonDecode(&req); err != nil {
+		set.Error = types.NewErrorMeta(types.ErrCodeBadArgument, "BadArgument")
+		return
+	}
+
+	if !lpapi.PackageNameRe.MatchString(req.Name) {
+		set.Error = types.NewErrorMeta(types.ErrCodeBadArgument, "Invalid Package Name")
+		return
+	}
+
+	if len(req.Data) < 10 {
+		set.Error = types.NewErrorMeta(types.ErrCodeBadArgument, "Invalid Data")
+		return
+	}
+
+	//
+	img64 := strings.SplitAfter(req.Data, ";base64,")
+	if len(img64) != 2 {
+		set.Error = types.NewErrorMeta(types.ErrCodeBadArgument, "Invalid Data")
+		return
+	}
+
 	{
 		aka, err := iamapi.AccessKeyAuthDecode(c.Session.AuthToken(""))
 		if err != nil {
@@ -265,26 +297,8 @@ func (c PkgInfo) IcoSetAction() {
 		}
 	}
 
-	var req lpapi.PackageInfoIcoSet
-	if err := c.Request.JsonDecode(&req); err != nil {
-		set.Error = types.NewErrorMeta(types.ErrCodeBadArgument, "BadArgument")
-		return
-	}
-
-	if req.Name == "" || len(req.Data) < 10 {
-		set.Error = types.NewErrorMeta(types.ErrCodeBadArgument, "BadArgument")
-		return
-	}
-
-	//
-	img64 := strings.SplitAfter(req.Data, ";base64,")
-	if len(img64) != 2 {
-		set.Error = types.NewErrorMeta(types.ErrCodeBadArgument, "BadArgument")
-		return
-	}
-
 	var info lpapi.PackageInfo
-	if rs := data.Data.PvGet("info/" + req.Name); rs.OK() {
+	if rs := data.Data.PvGet("info/" + strings.ToLower(req.Name)); rs.OK() {
 		rs.Decode(&info)
 	}
 	if info.Meta.Name != req.Name {
@@ -322,10 +336,16 @@ func (c PkgInfo) IcoSetAction() {
 		Data: base64.StdEncoding.EncodeToString(imgbuf.Bytes()),
 	}
 
-	if rs := data.Data.PvPut("ico/"+req.Name+"/"+req.Type, ico, &skv.PathWriteOptions{
+	if rs := data.Data.PvPut("ico/"+strings.ToLower(req.Name)+"/"+req.Type, ico, &skv.PathWriteOptions{
 		Force: true,
 	}); rs.OK() {
 		set.Kind = "PackageInfo"
+
+		info.Images.Set(req.Type)
+		data.Data.PvPut("info/"+req.Name, info, &skv.PathWriteOptions{
+			Force: true,
+		})
+
 	} else {
 		set.Error = types.NewErrorMeta(types.ErrCodeServerError, "Error "+rs.Bytex().String())
 	}

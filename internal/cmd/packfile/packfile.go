@@ -17,33 +17,23 @@ package packfile // import "code.hooto.com/lessos/lospack/internal/cmd/packfile"
 import (
 	"errors"
 	"fmt"
-	"os/user"
 	"path/filepath"
 
-	"code.hooto.com/lessos/iam/iamclient"
 	"github.com/apcera/termtables"
 	"github.com/lessos/lessgo/net/httpclient"
 	"github.com/lessos/lessgo/types"
 
 	"code.hooto.com/lessos/lospack/internal/cliflags"
+	"code.hooto.com/lessos/lospack/internal/cmd/auth"
 	"code.hooto.com/lessos/lospack/internal/ini"
 	"code.hooto.com/lessos/lospack/lpapi"
 )
 
 var (
-	arg_conf_path = ""
-	arg_pkgname   = ""
-	cfg           *ini.ConfigIni
-	err           error
+	arg_pkgname = ""
+	cfg         *ini.ConfigIni
+	err         error
 )
-
-func init() {
-	usr, err := user.Current()
-	if err != nil {
-		panic(err)
-	}
-	arg_conf_path = usr.HomeDir + "/.lospack"
-}
 
 func List() error {
 
@@ -55,27 +45,18 @@ func List() error {
 	}
 
 	//
-	arg_conf_path, _ = filepath.Abs(arg_conf_path)
-	if cfg, err = ini.ConfigIniParse(arg_conf_path); err != nil {
+	cfg, err = auth.Config()
+	if cfg == nil {
 		return err
 	}
 
-	if cfg == nil {
-		return fmt.Errorf("No Config File Found (" + arg_conf_path + ")")
-	}
-
-	aka, err := iamclient.NewAccessKeyAuth(
-		cfg.Get("access_key", "user").String(),
-		cfg.Get("access_key", "access_key").String(),
-		cfg.Get("access_key", "secret_key").String(),
-		"",
-	)
+	aka, err := auth.AccessKeyAuth()
 	if err != nil {
 		return err
 	}
 
 	hc := httpclient.Get(fmt.Sprintf(
-		"%s/lps/v1/pkg/list?qry_pkgname=%s",
+		"%s/lps/v1/pkg/list?name=%s",
 		cfg.Get("access_key", "service_url").String(),
 		arg_pkgname,
 	))
@@ -92,16 +73,16 @@ func List() error {
 	}
 
 	tbl := termtables.CreateTable()
-	tbl.AddHeaders("Name", "Version", "Release", "OS", "Arch", "Built")
+	tbl.AddHeaders("Name", "Version", "Release", "Dist", "Arch", "Built")
 
 	fmt.Println("Found", len(ls.Items))
 	for _, v := range ls.Items {
 		tbl.AddRow(
 			v.Meta.Name,
-			v.Version,
-			v.Release,
-			v.PkgOS,
-			v.PkgArch,
+			v.Version.Version,
+			v.Version.Release,
+			v.Version.Dist,
+			v.Version.Arch,
 			types.MetaTime(v.Built).Format("2006-01-02 15:04"),
 		)
 	}

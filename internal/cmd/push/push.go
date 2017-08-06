@@ -19,34 +19,26 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/user"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/lessos/lessgo/encoding/json"
 	"github.com/lessos/lessgo/net/httpclient"
 	"github.com/lessos/lessgo/types"
 
-	"code.hooto.com/lessos/iam/iamclient"
 	"code.hooto.com/lessos/lospack/internal/cliflags"
+	"code.hooto.com/lessos/lospack/internal/cmd/auth"
 	"code.hooto.com/lessos/lospack/internal/ini"
 	"code.hooto.com/lessos/lospack/lpapi"
 )
 
 var (
 	arg_pack_path = ""
-	arg_conf_path = ""
 	arg_channel   = ""
 	cfg           *ini.ConfigIni
 	err           error
+	pkg_spec_name = ".lospack/lospack.json"
 )
-
-func init() {
-	usr, err := user.Current()
-	if err != nil {
-		panic(err)
-	}
-	arg_conf_path = usr.HomeDir + "/.lospack"
-}
 
 func Cmd() error {
 
@@ -65,18 +57,54 @@ func Cmd() error {
 	if err != nil {
 		return fmt.Errorf("pack_path Not Found")
 	}
-	fmt.Printf("push %s\n", arg_pack_path)
+	fmt.Printf("\nPUSH %s\n", arg_pack_path)
 
 	//
-	arg_conf_path, _ = filepath.Abs(arg_conf_path)
-	if cfg, err = ini.ConfigIniParse(arg_conf_path); err != nil {
+
+	// check if uploaded
+	spec, err := exec.Command("/bin/tar", "-Jxvf", arg_pack_path, "-O", pkg_spec_name).Output()
+	if err != nil {
 		return err
 	}
 
-	if cfg == nil {
-		return fmt.Errorf("No Config File Found (" + arg_conf_path + ")")
+	var pack_spec lpapi.PackageSpec
+	if err := json.Decode(spec, &pack_spec); err != nil {
+		return err
 	}
 
+	cfg, err = auth.Config()
+	if err != nil {
+		return err
+	}
+
+	aka, err := auth.AccessKeyAuth()
+	if err != nil {
+		return err
+	}
+
+	{
+		url := fmt.Sprintf(
+			"%s/lps/v1/pkg/entry?id=%s",
+			cfg.Get("access_key", "service_url").String(),
+			lpapi.PackageMetaId(pack_spec.Name, pack_spec.Version),
+		)
+
+		hcp := httpclient.Get(url)
+		hcp.Header("Authorization", aka.Encode())
+		defer hcp.Close()
+
+		var rspkg types.TypeMeta
+		if err = hcp.ReplyJson(&rspkg); err != nil {
+			return err
+		}
+		if rspkg.Kind == "Package" {
+			fmt.Printf("  Target Package (%s) already existed\n",
+				lpapi.PackageFilename(pack_spec.Name, pack_spec.Version))
+			return nil
+		}
+	}
+
+	// do commit
 	req := lpapi.PackageCommit{
 		Size:     pack_stat.Size(),
 		Name:     pack_stat.Name(),
@@ -96,22 +124,6 @@ func Cmd() error {
 
 	req.Data += base64.StdEncoding.EncodeToString(bs)
 
-	aka, err := iamclient.NewAccessKeyAuth(
-		cfg.Get("access_key", "user").String(),
-		cfg.Get("access_key", "access_key").String(),
-		cfg.Get("access_key", "secret_key").String(),
-		"",
-	)
-	if err != nil {
-		return err
-	}
-
-	url := fmt.Sprintf(
-		"%s/lps/v1/pkg/commit",
-		cfg.Get("access_key", "service_url").String(),
-	)
-	fmt.Println(url)
-
 	hc := httpclient.Put(fmt.Sprintf(
 		"%s/lps/v1/pkg/commit",
 		cfg.Get("access_key", "service_url").String(),
@@ -122,9 +134,6 @@ func Cmd() error {
 	hc.Header("Authorization", aka.Encode())
 	hc.Body(js)
 
-	// fmt.Println(aka.Encode())
-	// fmt.Println(string(js))
-
 	var rsp types.TypeMeta
 	err = hc.ReplyJson(&rsp)
 	if err != nil {
@@ -134,7 +143,7 @@ func Cmd() error {
 	if rsp.Error != nil {
 		fmt.Println("err", rsp.Error)
 	}
-	fmt.Println("ok", rsp.Kind)
+	fmt.Println("  ok", rsp.Kind)
 
 	return nil
 }

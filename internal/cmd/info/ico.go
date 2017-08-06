@@ -27,9 +27,8 @@ import (
 	"github.com/lessos/lessgo/net/httpclient"
 	"github.com/lessos/lessgo/types"
 
-	"code.hooto.com/lessos/iam/iamclient"
 	"code.hooto.com/lessos/lospack/internal/cliflags"
-	"code.hooto.com/lessos/lospack/internal/ini"
+	"code.hooto.com/lessos/lospack/internal/cmd/auth"
 	"code.hooto.com/lessos/lospack/lpapi"
 )
 
@@ -69,13 +68,9 @@ func IcoSet() error {
 	fmt.Printf("ico set %s\n", arg_ico_path)
 
 	//
-	arg_conf_path, _ = filepath.Abs(arg_conf_path)
-	if cfg, err = ini.ConfigIniParse(arg_conf_path); err != nil {
-		return err
-	}
-
+	cfg, err := auth.Config()
 	if cfg == nil {
-		return fmt.Errorf("No Config File Found (" + arg_conf_path + ")")
+		return err
 	}
 
 	req := lpapi.PackageInfoIcoSet{
@@ -100,12 +95,7 @@ func IcoSet() error {
 
 	req.Data += base64.StdEncoding.EncodeToString(bs)
 
-	aka, err := iamclient.NewAccessKeyAuth(
-		cfg.Get("access_key", "user").String(),
-		cfg.Get("access_key", "access_key").String(),
-		cfg.Get("access_key", "secret_key").String(),
-		"",
-	)
+	aka, err := auth.AccessKeyAuth()
 	if err != nil {
 		return err
 	}

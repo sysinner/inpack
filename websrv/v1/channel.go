@@ -15,22 +15,14 @@
 package v1 // import "code.hooto.com/lessos/lospack/websrv/v1"
 
 import (
-	"regexp"
-
 	"code.hooto.com/lessos/iam/iamapi"
 	"code.hooto.com/lessos/iam/iamclient"
 	"code.hooto.com/lynkdb/iomix/skv"
-	"github.com/lessos/lessgo/crypto/idhash"
 	"github.com/lessos/lessgo/httpsrv"
 	"github.com/lessos/lessgo/types"
 
 	"code.hooto.com/lessos/lospack/lpapi"
 	"code.hooto.com/lessos/lospack/server/data"
-)
-
-var (
-	channel_id_re     = regexp.MustCompile("^[a-f0-9]{8,16}$")
-	channel_vendor_re = regexp.MustCompile("^[a-zA-Z]{1}[a-zA-Z0-9.]{2,49}$")
 )
 
 type Channel struct {
@@ -73,12 +65,13 @@ func (c Channel) EntryAction() {
 	var set lpapi.PackageChannel
 	defer c.RenderJson(&set)
 
-	if c.Params.Get("id") == "" {
-		set.Error = types.NewErrorMeta("404", "Channel Not Found")
+	name := c.Params.Get("name")
+	if !lpapi.ChannelNameRe.MatchString(name) {
+		set.Error = types.NewErrorMeta("400", "Invalid Channel Name")
 		return
 	}
 
-	rs := data.Data.PvGet("channel/" + c.Params.Get("id"))
+	rs := data.Data.PvGet("channel/" + name)
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("404", "Channel Not Found")
 		return
@@ -102,12 +95,13 @@ func (c Channel) SetAction() {
 		return
 	}
 
-	if !channel_id_re.MatchString(set.Meta.ID) {
-		set.Meta.ID = idhash.RandHexString(8)
+	if !lpapi.ChannelNameRe.MatchString(set.Meta.Name) {
+		set.Error = types.NewErrorMeta("400", "Invalid Channel Name")
+		return
 	}
 
-	if !channel_vendor_re.MatchString(set.VendorName) {
-		set.Error = types.NewErrorMeta("400", "Bad Request: Invalid VendorName")
+	if !lpapi.ChannelVendorRe.MatchString(set.VendorName) {
+		set.Error = types.NewErrorMeta("400", "Invalid Vendor Name")
 		return
 	}
 
@@ -116,7 +110,7 @@ func (c Channel) SetAction() {
 		return
 	}
 
-	if rs := data.Data.PvGet("channel/" + set.Meta.ID); rs.OK() {
+	if rs := data.Data.PvGet("channel/" + set.Meta.Name); rs.OK() {
 
 		var prev lpapi.PackageChannel
 
@@ -152,7 +146,7 @@ func (c Channel) SetAction() {
 	set.Meta.Updated = types.MetaTimeNow()
 	set.Kind = ""
 
-	if rs := data.Data.PvPut("channel/"+set.Meta.ID, set, nil); !rs.OK() {
+	if rs := data.Data.PvPut("channel/"+set.Meta.Name, set, nil); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Can not write to database: "+rs.Bytex().String())
 		return
 	}
@@ -170,7 +164,13 @@ func (c Channel) DeleteAction() {
 		return
 	}
 
-	rs := data.Data.PvGet("channel/" + c.Params.Get("id"))
+	name := c.Params.Get("name")
+	if !lpapi.ChannelNameRe.MatchString(name) {
+		set.Error = types.NewErrorMeta("400", "Invalid Channel Name")
+		return
+	}
+
+	rs := data.Data.PvGet("channel/" + name)
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("404", "Channel Not Found")
 		return
@@ -181,12 +181,12 @@ func (c Channel) DeleteAction() {
 		return
 	}
 
-	if set.Packages > 0 {
+	if set.StatNum > 0 {
 		set.Error = types.NewErrorMeta("400", "Can not delete non-empty Channel")
 		return
 	}
 
-	if rs := data.Data.PvDel("channel/"+c.Params.Get("id"), nil); !rs.OK() {
+	if rs := data.Data.PvDel("channel/"+name, nil); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Server Error")
 		return
 	}

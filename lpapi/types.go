@@ -15,11 +15,25 @@
 package lpapi // import "code.hooto.com/lessos/lospack/lpapi"
 
 import (
+	"crypto/sha256"
+	"errors"
+	"fmt"
+	"regexp"
+	"strings"
+
 	"github.com/lessos/lessgo/types"
 )
 
 const (
 	PackageAPIVersion = "0.1.0.dev"
+)
+
+var (
+	ChannelNameRe   = regexp.MustCompile("^[a-z0-9]{3,10}$")
+	ChannelVendorRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9-.]{2,49}$")
+	PackageNameRe   = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9-_]{1,28}[a-zA-Z0-9]$")
+	VersionDistRe   = types.ArrayString([]string{"all", "el7"})
+	VersionArchRe   = types.ArrayString([]string{"src", "x64"})
 )
 
 var (
@@ -81,40 +95,101 @@ var (
 	}
 )
 
-type PackageSpec struct {
-	Name        string            `json:"name"`
-	Version     types.Version     `json:"version"`
-	Release     types.Version     `json:"release"`
-	Groups      types.ArrayString `json:"groups,omitempty"`
-	Description string            `json:"description,omitempty"`
-	License     string            `json:"license,omitempty"`
+type PackageVersion struct {
+	Version types.Version `json:"version"`
+	Release types.Version `json:"release"`
+	Dist    string        `json:"dist,omitempty"` // Distribution name
+	Arch    string        `json:"arch,omitempty"` // Computer architecture
+}
+
+func (it *PackageVersion) Valid() error {
+
+	if !it.Version.Valid() {
+		return errors.New("Invalid Version Value")
+	}
+
+	if !it.Release.Valid() {
+		return errors.New("Invalid Release Value")
+	}
+
+	if !VersionDistRe.Has(it.Dist) {
+		return errors.New("Invalid Distribution")
+	}
+
+	if !VersionArchRe.Has(it.Arch) {
+		return errors.New("Invalid Computer Architecture")
+	}
+
+	return nil
+}
+
+type PackageProject struct {
 	Vendor      string            `json:"vendor,omitempty"` // example.com
+	License     string            `json:"license,omitempty"`
 	Homepage    string            `json:"homepage,omitempty"`
+	Repository  string            `json:"repository,omitempty"`
+	Author      string            `json:"author,omitempty"`
 	Keywords    types.ArrayString `json:"keywords,omitempty"`
-	PkgOS       string            `json:"pkg_os,omitempty"`
-	PkgArch     string            `json:"pkg_arch,omitempty"`
-	Options     types.Labels      `json:"options,omitempty"`
-	Created     types.MetaTime    `json:"created,omitempty"`
+	Description string            `json:"description,omitempty"`
+}
+
+type PackageSpec struct {
+	Name    string            `json:"name"`
+	Version PackageVersion    `json:"version"`
+	Project PackageProject    `json:"project,omitempty"`
+	Groups  types.ArrayString `json:"groups,omitempty"`
+	Labels  types.Labels      `json:"labels,omitempty"`
+	Built   types.MetaTime    `json:"built,omitempty"`
+}
+
+func (it *PackageSpec) Valid() error {
+
+	if !PackageNameRe.MatchString(it.Name) {
+		return errors.New("Invalid Name")
+	}
+
+	if err := it.Version.Valid(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func PackageFilename(name string, ver PackageVersion) string {
+	return fmt.Sprintf(
+		"%s-%s-%s.%s.%s",
+		name, ver.Version, ver.Release, ver.Dist, ver.Arch,
+	)
+}
+
+func PackageMetaId(name string, ver PackageVersion) string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(strings.ToLower(PackageFilename(name, ver)))))[:16]
 }
 
 type Package struct {
-	Meta        types.InnerObjectMeta `json:"meta,omitempty"`
-	Version     types.Version         `json:"version,omitempty"`
-	Release     types.Version         `json:"release,omitempty"`
-	Description string                `json:"description,omitempty"`
-	Vendor      string                `json:"vendor,omitempty"`
-	License     string                `json:"license,omitempty"`
-	PkgOS       string                `json:"pkg_os,omitempty"`
-	PkgArch     string                `json:"pkg_arch,omitempty"`
-	PkgSize     int64                 `json:"pkg_size,omitempty"`
-	PkgSum      string                `json:"pkg_sum,omitempty"`
-	Groups      types.ArrayString     `json:"groups,omitempty"`
-	Options     types.Labels          `json:"options,omitempty"`
-	Homepage    string                `json:"homepage,omitempty"`
-	Keywords    []string              `json:"keywords,omitempty"`
-	Built       types.MetaTime        `json:"built,omitempty"`
-	Channel     string                `json:"channel,omitempty"`
-	OpPerm      uint8                 `json:"op_perm,omitempty"`
+	Meta     types.InnerObjectMeta `json:"meta,omitempty"`
+	Version  PackageVersion        `json:"version,omitempty"`
+	Project  PackageProject        `json:"project,omitempty"`
+	Groups   types.ArrayString     `json:"groups,omitempty"`
+	Labels   types.Labels          `json:"labels,omitempty"`
+	Channel  string                `json:"channel,omitempty"`
+	Built    types.MetaTime        `json:"built,omitempty"`
+	Size     int64                 `json:"size,omitempty"`
+	SumCheck string                `json:"sum_check,omitempty"`
+	OpPerm   uint8                 `json:"op_perm,omitempty"`
+}
+
+func (it *Package) Valid() error {
+
+	if !PackageNameRe.MatchString(it.Meta.Name) {
+		return errors.New("Invalid Name")
+	}
+
+	if err := it.Version.Valid(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type PackageList struct {
@@ -125,15 +200,13 @@ type PackageList struct {
 type PackageInfo struct {
 	types.TypeMeta
 	Meta        types.InnerObjectMeta `json:"meta,omitempty"`
-	Description string                `json:"description,omitempty"`
+	Project     PackageProject        `json:"project,omitempty"`
 	LastVersion types.Version         `json:"last_version,omitempty"`
-	LastRelease types.Version         `json:"last_release,omitempty"`
 	Groups      types.ArrayString     `json:"groups,omitempty"`
-	PkgNum      int                   `json:"pkg_num,omitempty"`
-	Homepage    string                `json:"homepage,omitempty"`
+	StatNum     int64                 `json:"stat_num,omitempty"`
+	StatSize    int64                 `json:"stat_size,omitempty"`
+	Images      types.ArrayString     `json:"images,omitempty"`
 	OpPerm      uint8                 `json:"op_perm,omitempty"`
-	// Ico11       string                `json:"ico11,omitempty"`
-	// Ico21       string                `json:"ico21,omitempty"`
 }
 
 type PackageInfoList struct {
@@ -169,11 +242,12 @@ type PackageChannel struct {
 	types.TypeMeta `json:",inline"`
 	Meta           types.InnerObjectMeta `json:"meta,omitempty"`
 	Type           string                `json:"type,omitempty"`
-	Packages       int64                 `json:"packages,omitempty"`
 	VendorName     string                `json:"vendor_name,omitempty"`
 	VendorAPI      string                `json:"vendor_api,omitempty"`
 	VendorSite     string                `json:"vendor_site,omitempty"`
 	Upstream       string                `json:"upstream,omitempty"`
+	StatNum        int64                 `json:"stat_num,omitempty"`
+	StatSize       int64                 `json:"stat_size,omitempty"`
 	Roles          *PackageChannelRoles  `json:"roles,omitempty"`
 }
 
@@ -197,14 +271,6 @@ type PackageCommit struct {
 	SumCheck       string `json:"sumcheck"`
 	AutoRelease    bool   `json:"auto_release"`
 	GitVersion     string `json:"git_version"`
-}
-
-type Version struct {
-	Version string `json:"version"`
-	Release string `json:"release"`
-	OS      string `json:"os"`
-	Arch    string `json:"arch"`
-	Sum     string `json:"sum"`
 }
 
 const (

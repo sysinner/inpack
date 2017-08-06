@@ -35,19 +35,20 @@ import (
 // npm install clean-css-cli -g
 // npm install html-minifier -g
 var (
-	pack_dir        = ""
-	pack_spec       = "lospack.spec"
-	build_bin       = ".build_bin"
-	build_src       = ".build_src"
-	packed_spec_dir = ".lospack"
-	packed_spec     = packed_spec_dir + "/lospack.json"
-	jscp            = "uglifyjs %s -c -m -o %s"
-	csscp           = "cleancss --skip-rebase %s -o %s"
-	htmlcp          = "html-minifier -c /tmp/html-minifier.conf %s -o %s"
-	pngcp           = "optipng -o7 %s -out %s"
-	filecp          = "cp -rpf %s %s"
-	cpfiles         types.ArrayString
-	ignores         = types.ArrayString{
+	pack_dir          = ""
+	pack_spec         = "lospack.spec"
+	build_tempdir     = ".build_tempdir"
+	build_src_tempdir = ".build_src_tempdir"
+	arg_output_dir    = ""
+	packed_spec_dir   = ".lospack"
+	packed_spec       = packed_spec_dir + "/lospack.json"
+	jscp              = "uglifyjs %s -c -m -o %s"
+	csscp             = "cleancss --skip-rebase %s -o %s"
+	htmlcp            = "html-minifier -c /tmp/html-minifier.conf %s -o %s"
+	pngcp             = "optipng -o7 %s -out %s"
+	filecp            = "cp -rpf %s %s"
+	cpfiles           types.ArrayString
+	ignores           = types.ArrayString{
 		".git",
 		".gitignore",
 		".gitmodules",
@@ -82,10 +83,19 @@ func Cmd() error {
 		if _, err := os.Stat(pack_dir); err != nil {
 			return fmt.Errorf("pack_dir Not Found")
 		}
-		fmt.Println("change dir\n    ", pack_dir)
+		fmt.Println("  change dir\n    ", pack_dir)
 		os.Chdir(pack_dir)
 	}
 	pack_dir, _ = filepath.Abs(pack_dir)
+
+	if v, ok := cliflags.Value("output"); ok {
+		arg_output_dir, _ = filepath.Abs(v.String())
+		if pack_dir == arg_output_dir || len(arg_output_dir) < 3 {
+			arg_output_dir = ""
+		} else if st, err := os.Stat(arg_output_dir); err != nil || !st.IsDir() {
+			arg_output_dir = ""
+		}
+	}
 
 	dist := ""
 	arch := "x64"
@@ -175,79 +185,116 @@ func Cmd() error {
 
 	//
 	pkg := lpapi.PackageSpec{
-		Name:     cfg.Get("project.name").String(),
-		Version:  types.Version(cfg.Get("project.version").String()),
-		Release:  types.Version(cfg.Get("project.release").String()),
-		PkgOS:    "all", // dist,
-		PkgArch:  "src", // arch,
-		Vendor:   cfg.Get("project.vendor").String(),
-		Homepage: cfg.Get("project.homepage").String(),
-		Created:  types.MetaTimeNow(),
+		Name: cfg.Get("project.name").String(),
+		Version: lpapi.PackageVersion{
+			Version: types.Version(cfg.Get("project.version").String()),
+			Release: types.Version(cfg.Get("project.release").String()),
+			Dist:    "all", // dist,
+			Arch:    "src", // arch,
+		},
+		Project: lpapi.PackageProject{
+			Vendor:      cfg.Get("project.vendor").String(),
+			License:     cfg.Get("project.license").String(),
+			Homepage:    cfg.Get("project.homepage").String(),
+			Repository:  cfg.Get("project.repository").String(),
+			Author:      cfg.Get("project.author").String(),
+			Description: cfg.Get("project.description").String(),
+		},
+		Built: types.MetaTimeNow(),
 	}
 	groups := strings.Split(cfg.Get("project.groups").String(), ",")
 	for _, v := range groups {
-		pkg.Groups.Insert(v)
+		pkg.Groups.Set(v)
+	}
+	tags := strings.Split(cfg.Get("project.keywords").String(), ",")
+	for _, v := range tags {
+		pkg.Project.Keywords.Set(v)
 	}
 
-	fmt.Printf(`building
-    package: %s
-    version: %s
-    release: %s
-    os:      %s
-    arch:    %s
-    vendor:  %s
+	fmt.Printf(`
+Building
+  package: %s
+  version: %s
+  release: %s
+  dist:    %s
+  arch:    %s
+  vendor:  %s
 `,
 		pkg.Name,
-		pkg.Version,
-		pkg.Release,
+		pkg.Version.Version,
+		pkg.Version.Release,
 		dist,
 		arch,
-		pkg.Vendor,
+		pkg.Project.Vendor,
 	)
 
 	//
 	if _, ok := cliflags.Value("build_src"); ok {
 
-		if err := _build_source(cfg); err == nil {
+		target_name := lpapi.PackageFilename(pkg.Name, pkg.Version)
 
-			//
-			if err := json.EncodeToFile(pkg, fmt.Sprintf("%s/%s", build_src, packed_spec), "  "); err != nil {
-				return err
-			}
+		target_path := target_name + ".txz"
+		if arg_output_dir != "" {
+			target_path = arg_output_dir + "/" + target_path
+		}
 
-			if _, ok := cliflags.Value("build_src_nocompress"); !ok {
-				if err := _tar_compress(
-					build_src,
-					fmt.Sprintf("%s-%s-%s.all.src", pkg.Name, pkg.Version, pkg.Release),
-				); err != nil {
+		if _, err := os.Stat(target_path); err != nil {
+
+			if err := _build_source(cfg); err == nil {
+
+				//
+				if err := json.EncodeToFile(pkg, fmt.Sprintf("%s/%s", build_src_tempdir, packed_spec), "  "); err != nil {
 					return err
 				}
+
+				if err := _tar_compress(build_src_tempdir, target_name); err != nil {
+					return err
+				}
+
+				if arg_output_dir != "" {
+					if err = os.Rename(target_name+".txz", arg_output_dir+"/"+target_name+".txz"); err != nil {
+						return err
+					}
+				}
 			}
+			os.RemoveAll(build_src_tempdir)
+		} else {
+			fmt.Printf("  Target Package (%s) already existed\n", target_path)
 		}
 	}
 
-	if v, ok := cliflags.Value("build_bin"); ok && v.String() != "" {
-		build_bin = v.String()
+	if v, ok := cliflags.Value("build_dir"); ok && v.String() != "" {
+		build_tempdir = v.String()
 	}
-	build_bin, err = filepath.Abs(build_bin)
+	build_tempdir, err = filepath.Abs(build_tempdir)
 	if err != nil {
 		return err
 	}
 
 	//
-	pkg.PkgOS = dist
-	pkg.PkgArch = arch
+	pkg.Version.Dist = dist
+	pkg.Version.Arch = arch
+
+	if _, ok := cliflags.Value("build_nocompress"); !ok {
+		target_path := lpapi.PackageFilename(pkg.Name, pkg.Version) + ".txz"
+		if arg_output_dir != "" {
+			target_path = arg_output_dir + "/" + target_path
+		}
+		if _, err := os.Stat(target_path); err == nil {
+			fmt.Printf("  Target Package (%s) already existed\n", target_path)
+			return nil
+		}
+	}
 
 	cfg.Params("lospack__pack_dir", pack_dir)
-	cfg.Params("buildroot", build_bin)
-	cfg.Params("project__version", string(pkg.Version))
-	cfg.Params("project__release", string(pkg.Release))
-	cfg.Params("project__os", dist)
-	cfg.Params("project__arch", arch)
+	cfg.Params("buildroot", build_tempdir)
+	cfg.Params("project__version", string(pkg.Version.Version))
+	cfg.Params("project__release", string(pkg.Version.Release))
 	cfg.Params("project__dist", dist)
+	cfg.Params("project__arch", arch)
 	cfg.Params("project__prefix", "/home/action/apps/"+pkg.Name)
 
-	os.Mkdir(build_bin, 0755)
+	os.Mkdir(build_tempdir, 0755)
 
 	subfiles := _lookup_files(cfg.Get("js_compress").String(), ".js")
 	if err := _compress(subfiles, jscp); err != nil {
@@ -294,25 +341,31 @@ func Cmd() error {
 		return fmt.Errorf("FileCopy %s", err.Error())
 	}
 
-	os.MkdirAll(fmt.Sprintf("%s/%s", build_bin, packed_spec_dir), 0755)
+	os.MkdirAll(fmt.Sprintf("%s/%s", build_tempdir, packed_spec_dir), 0755)
 
 	if err := _cmd(cfg.Get("build").String()); err != nil {
 		return err
 	}
 
 	//
-	if err := json.EncodeToFile(pkg, fmt.Sprintf("%s/%s", build_bin, packed_spec), "  "); err != nil {
+	if err := json.EncodeToFile(pkg, fmt.Sprintf("%s/%s", build_tempdir, packed_spec), "  "); err != nil {
 		return err
 	}
 
-	if _, ok := cliflags.Value("build_bin_nocompress"); ok {
-		return nil
+	if _, ok := cliflags.Value("build_nocompress"); !ok {
+		target_name := lpapi.PackageFilename(pkg.Name, pkg.Version)
+		if err = _tar_compress(build_tempdir, target_name); err != nil {
+			return err
+		}
+		if arg_output_dir != "" {
+			if err = os.Rename(target_name+".txz", arg_output_dir+"/"+target_name+".txz"); err != nil {
+				return err
+			}
+		}
+		os.RemoveAll(build_tempdir)
 	}
 
-	return _tar_compress(
-		build_bin,
-		fmt.Sprintf("%s-%s-%s.%s.%s", pkg.Name, pkg.Version, pkg.Release, dist, arch),
-	)
+	return nil
 }
 
 func _tar_compress(dir, pkg_name string) error {
@@ -327,7 +380,7 @@ mv ` + pkg_name + `.tar.xz ../` + pkg_name + `.txz
 		return err
 	}
 
-	fmt.Printf("OK\n    %s.txz\n\n", pkg_name)
+	fmt.Printf("  OK\n    %s.txz\n\n", pkg_name)
 
 	return nil
 }
@@ -348,7 +401,7 @@ func _build_source(cfg *ini.ConfigIni) error {
 			continue
 		}
 
-		dstfile := fmt.Sprintf("./%s/%s", build_src, file)
+		dstfile := fmt.Sprintf("./%s/%s", build_src_tempdir, file)
 
 		if _, fname := filepath.Split(dstfile); ignores.Contain(fname) {
 			continue
@@ -368,7 +421,7 @@ func _build_source(cfg *ini.ConfigIni) error {
 		}
 	}
 
-	spec_file := fmt.Sprintf("./%s/%s/%s", build_src, packed_spec_dir, pack_spec)
+	spec_file := fmt.Sprintf("./%s/%s/%s", build_src_tempdir, packed_spec_dir, pack_spec)
 	if err := os.MkdirAll(filepath.Dir(spec_file), 0755); err != nil {
 		return err
 	}
@@ -455,7 +508,7 @@ func _compress(ls types.ArrayString, cmd_str string) error {
 
 	for _, file := range ls {
 
-		dstfile := fmt.Sprintf("%s/%s", build_bin, file)
+		dstfile := fmt.Sprintf("%s/%s", build_tempdir, file)
 
 		if _, err := os.Stat(dstfile); err == nil {
 			continue
@@ -469,16 +522,16 @@ func _compress(ls types.ArrayString, cmd_str string) error {
 
 		if out, err := exec.Command("sh", "-c", cmd).Output(); err != nil {
 
-			fmt.Printf("FILE ER (%s) %s %s\n", file, err.Error(), string(out))
+			fmt.Printf("  FILE ER (%s) %s %s\n", file, err.Error(), string(out))
 
 			if _, err := exec.Command("cp", "-rpf", file, dstfile).Output(); err != nil {
 				os.Remove(dstfile)
 				return err
 			} else {
-				fmt.Println("FILE ER-OK", file)
+				fmt.Println("  FILE ER-OK", file)
 			}
 		} else {
-			fmt.Println("FILE OK", file)
+			fmt.Println("  FILE OK", file)
 		}
 	}
 

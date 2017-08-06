@@ -17,50 +17,29 @@ package info // import "code.hooto.com/lessos/lospack/internal/cmd/info"
 import (
 	"errors"
 	"fmt"
-	"os/user"
-	"path/filepath"
 
-	"code.hooto.com/lessos/iam/iamclient"
 	"github.com/apcera/termtables"
 	"github.com/lessos/lessgo/net/httpclient"
 	"github.com/lessos/lessgo/types"
 
+	"code.hooto.com/lessos/lospack/internal/cmd/auth"
 	"code.hooto.com/lessos/lospack/internal/ini"
 	"code.hooto.com/lessos/lospack/lpapi"
 )
 
 var (
-	arg_conf_path = ""
-	cfg           *ini.ConfigIni
-	err           error
+	cfg *ini.ConfigIni
+	err error
 )
 
-func init() {
-	usr, err := user.Current()
-	if err != nil {
-		panic(err)
-	}
-	arg_conf_path = usr.HomeDir + "/.lospack"
-}
-
 func List() error {
-
 	//
-	arg_conf_path, _ = filepath.Abs(arg_conf_path)
-	if cfg, err = ini.ConfigIniParse(arg_conf_path); err != nil {
+	cfg, err = auth.Config()
+	if cfg == nil {
 		return err
 	}
 
-	if cfg == nil {
-		return fmt.Errorf("No Config File Found (" + arg_conf_path + ")")
-	}
-
-	aka, err := iamclient.NewAccessKeyAuth(
-		cfg.Get("access_key", "user").String(),
-		cfg.Get("access_key", "access_key").String(),
-		cfg.Get("access_key", "secret_key").String(),
-		"",
-	)
+	aka, err := auth.AccessKeyAuth()
 	if err != nil {
 		return err
 	}
@@ -89,7 +68,7 @@ func List() error {
 		tbl.AddRow(
 			v.Meta.Name,
 			v.LastVersion,
-			v.PkgNum,
+			v.StatNum,
 			types.MetaTime(v.Meta.Updated).Format("2006-01-02 15:04"),
 		)
 	}

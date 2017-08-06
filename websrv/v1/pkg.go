@@ -81,14 +81,14 @@ func (c Pkg) ListAction() {
 	defer c.RenderJson(&ls)
 
 	var (
-		qry_pkgname = c.Params.Get("qry_pkgname")
-		qry_chanid  = c.Params.Get("qry_chanid")
-		qry_text    = c.Params.Get("qry_text")
-		limit       = int(c.Params.Int64("limit"))
+		q_name    = c.Params.Get("name")
+		q_channel = c.Params.Get("channel")
+		q_text    = c.Params.Get("q")
+		limit     = int(c.Params.Int64("limit"))
 	)
 
-	if qry_pkgname == "" {
-		ls.Error = types.NewErrorMeta(types.ErrCodeBadArgument, "Package Name Not Found")
+	if !lpapi.PackageNameRe.MatchString(q_name) {
+		ls.Error = types.NewErrorMeta("400", "Invalid Package Name")
 		return
 	}
 
@@ -100,10 +100,7 @@ func (c Pkg) ListAction() {
 
 	rs := data.Data.PoScan("p", []byte{}, []byte{}, 1000)
 	if !rs.OK() {
-		ls.Error = &types.ErrorMeta{
-			Code:    "500",
-			Message: rs.Bytex().String(),
-		}
+		ls.Error = types.NewErrorMeta("500", rs.Bytex().String())
 		return
 	}
 
@@ -118,15 +115,15 @@ func (c Pkg) ListAction() {
 		var set lpapi.Package
 		if err := entry.Decode(&set); err == nil {
 
-			if qry_pkgname != "" && qry_pkgname != set.Meta.Name {
+			if q_name != "" && q_name != set.Meta.Name {
 				return 0
 			}
 
-			if qry_chanid != "" && qry_chanid != set.Channel {
+			if q_channel != "" && q_channel != set.Channel {
 				return 0
 			}
 
-			if qry_text != "" && !strings.Contains(set.Meta.Name, qry_text) {
+			if q_text != "" && !strings.Contains(set.Meta.Name, q_text) {
 				return 0
 			}
 
@@ -167,20 +164,27 @@ func (c Pkg) EntryAction() {
 	)
 
 	if id == "" && name == "" {
-		set.Error = &types.ErrorMeta{
-			Code:    "400",
-			Message: "ID or Name can not be null",
-		}
+		set.Error = types.NewErrorMeta("400", "Package ID or Name Not Found")
 		return
 	} else if name != "" {
 
-		id = fmt.Sprintf("%x", sha256.Sum256([]byte(strings.ToLower(
-			fmt.Sprintf(
-				"%s-%s-%s.%s.%s",
-				name, c.Params.Get("version"), c.Params.Get("release"),
-				c.Params.Get("dist"), c.Params.Get("arch"),
-			),
-		))))[:16]
+		if !lpapi.PackageNameRe.MatchString(name) {
+			set.Error = types.NewErrorMeta("400", "Invalid Package Name")
+			return
+		}
+
+		version := lpapi.PackageVersion{
+			Version: types.Version(c.Params.Get("version")),
+			Release: types.Version(c.Params.Get("release")),
+			Dist:    c.Params.Get("dist"),
+			Arch:    c.Params.Get("arch"),
+		}
+		if err := version.Valid(); err != nil {
+			set.Error = types.NewErrorMeta("400", err.Error())
+			return
+		}
+
+		id = lpapi.PackageMetaId(name, version)
 	}
 
 	if id != "" {
@@ -206,6 +210,12 @@ func (c Pkg) CommitAction() {
 	set := types.TypeMeta{}
 	defer c.RenderJson(&set)
 
+	var req lpapi.PackageCommit
+	if err := c.Request.JsonDecode(&req); err != nil {
+		set.Error = types.NewErrorMeta("400", err.Error())
+		return
+	}
+
 	//
 	aka, err := iamapi.AccessKeyAuthDecode(c.Session.AuthToken(""))
 	if err != nil {
@@ -230,19 +240,12 @@ func (c Pkg) CommitAction() {
 		return
 	}
 
-	var req lpapi.PackageCommit
-	if err := c.Request.JsonDecode(&req); err != nil {
-		set.Error = types.NewErrorMeta("400", err.Error())
-		return
-	}
-
 	var (
 		chs     = channelList()
 		channel *lpapi.PackageChannel
 	)
 	for _, v := range chs {
-		if v.Meta.ID == req.Channel ||
-			v.Meta.Name == req.Channel {
+		if v.Meta.Name == req.Channel {
 			channel = &v
 			break
 		}
@@ -292,32 +295,29 @@ func (c Pkg) CommitAction() {
 	// Export package definition information, checking
 	spec, err := exec.Command("/bin/tar", "-Jxvf", config.Prefix+"/var/tmp/"+req.Name, "-O", pkg_spec_name).Output()
 	if err != nil {
-		set.Error = types.NewErrorMeta("500", err.Error())
+		set.Error = types.NewErrorMeta("400", err.Error())
 		os.Remove(config.Prefix + "/var/tmp/" + req.Name)
 		return
 	}
 
 	var pack_spec lpapi.PackageSpec
 	if err := json.Decode(spec, &pack_spec); err != nil {
-		set.Error = types.NewErrorMeta("500", err.Error())
+		set.Error = types.NewErrorMeta("400", err.Error())
+		return
+	}
+	if err := pack_spec.Valid(); err != nil {
+		set.Error = types.NewErrorMeta("400", err.Error())
 		return
 	}
 
-	//
-	pkg_full_name := fmt.Sprintf(
-		"%s-%s-%s.%s.%s",
-		pack_spec.Name, pack_spec.Version, pack_spec.Release,
-		pack_spec.PkgOS, pack_spec.PkgArch,
-	)
-	if !strings.HasPrefix(req.Name, pkg_full_name) {
+	pkg_filename := lpapi.PackageFilename(pack_spec.Name, pack_spec.Version)
+	if !strings.HasPrefix(req.Name, pkg_filename) {
 		set.Error = types.NewErrorMeta("400", "Package Name Error")
 		return
 	}
 
 	//
-	pn_hash := sha256.New()
-	pn_hash.Write([]byte(strings.ToLower(pkg_full_name)))
-	pkg_id := fmt.Sprintf("%x", pn_hash.Sum(nil))[:16]
+	pkg_id := lpapi.PackageMetaId(pack_spec.Name, pack_spec.Version)
 
 	rs := data.Data.PoGet("p", pkg_id)
 	if !rs.NotFound() {
@@ -328,7 +328,7 @@ func (c Pkg) CommitAction() {
 	// TODO  /name/version/*
 	path := fmt.Sprintf(
 		"/%s/%s/%s",
-		pack_spec.Name, pack_spec.Version, req.Name,
+		pack_spec.Name, pack_spec.Version.Version, req.Name,
 	)
 	dir := filepath.Dir(path)
 	if st, err := data.Storage.Stat(dir); os.IsNotExist(err) {
@@ -369,9 +369,9 @@ func (c Pkg) CommitAction() {
 	filehash := sha256.New()
 	// io.Copy(filehash, fp)
 	filehash.Write(filedata)
-	pkg_sum := fmt.Sprintf("sha256:%x", filehash.Sum(nil))
+	sum_check := fmt.Sprintf("sha256:%x", filehash.Sum(nil))
 	// TODO
-	// if req.SumCheck != pkg_sum {
+	// if req.SumCheck != sum_check {
 	// 	set.Error = &types.ErrorMeta{
 	// 		Code:    "400",
 	// 		Message: "Error on Sum Check",
@@ -388,18 +388,12 @@ func (c Pkg) CommitAction() {
 			Created: types.MetaTimeNow(),
 			Updated: types.MetaTimeNow(),
 		},
-		Version:     pack_spec.Version,
-		Release:     pack_spec.Release,
-		PkgOS:       pack_spec.PkgOS,
-		PkgArch:     pack_spec.PkgArch,
-		PkgSize:     fsize,
-		PkgSum:      pkg_sum,
-		Keywords:    pack_spec.Keywords,
-		Description: pack_spec.Description,
-		Vendor:      pack_spec.Vendor,
-		License:     pack_spec.License,
-		Channel:     channel.Meta.ID,
-		Built:       pack_spec.Created,
+		Version:  pack_spec.Version,
+		Size:     fsize,
+		SumCheck: sum_check,
+		Project:  pack_spec.Project,
+		Channel:  channel.Meta.Name,
+		Built:    pack_spec.Built,
 	}
 	for _, v := range pack_spec.Groups {
 		pack.Groups.Insert(v)
@@ -411,19 +405,20 @@ func (c Pkg) CommitAction() {
 	}
 
 	var prev_info lpapi.PackageInfo
-	if rs := data.Data.PvGet("info/" + pack_spec.Name); rs.NotFound() {
+	name_lower := strings.ToLower(pack_spec.Name)
+	if rs := data.Data.PvGet("info/" + name_lower); rs.NotFound() {
 
 		prev_info = lpapi.PackageInfo{
 			Meta: types.InnerObjectMeta{
 				Name:    pack_spec.Name,
+				User:    aksess.User,
 				Created: types.MetaTimeNow(),
 			},
-			LastVersion: pack_spec.Version,
-			LastRelease: pack_spec.Release,
-			Description: pack_spec.Description,
+			LastVersion: pack_spec.Version.Version,
+			Project:     pack_spec.Project,
 			Groups:      pack_spec.Groups,
-			PkgNum:      1,
-			Homepage:    pack_spec.Homepage,
+			StatNum:     1,
+			StatSize:    pack.Size,
 		}
 
 	} else if rs.OK() {
@@ -433,34 +428,32 @@ func (c Pkg) CommitAction() {
 			return
 		}
 
-		switch pack_spec.Version.Compare(&prev_info.LastVersion) {
-
+		switch pack_spec.Version.Version.Compare(&prev_info.LastVersion) {
 		case 1:
-			prev_info.LastVersion = pack_spec.Version
-			prev_info.LastRelease = pack_spec.Release
-
-		case 0:
-			if pack_spec.Release.Compare(&prev_info.LastRelease) > 0 {
-				prev_info.LastRelease = pack_spec.Release
-			}
-		}
-
-		if prev_info.Description == "" &&
-			prev_info.Description != pack_spec.Description {
-			prev_info.Description = pack_spec.Description
+			prev_info.LastVersion = pack_spec.Version.Version
 		}
 
 		//
-		prev_info.PkgNum++
+		prev_info.StatNum++
+		prev_info.StatSize += pack.Size
 
-		if prev_info.Homepage == "" &&
-			prev_info.Homepage != pack_spec.Homepage {
-			prev_info.Homepage = pack_spec.Homepage
+		if prev_info.Project.Description == "" &&
+			prev_info.Project.Description != pack_spec.Project.Description {
+			prev_info.Project.Description = pack_spec.Project.Description
+		}
+
+		if prev_info.Project.Homepage == "" &&
+			prev_info.Project.Homepage != pack_spec.Project.Homepage {
+			prev_info.Project.Homepage = pack_spec.Project.Homepage
 		}
 
 		if len(prev_info.Groups) < 1 &&
 			!prev_info.Groups.Equal(pack_spec.Groups) {
 			prev_info.Groups = pack_spec.Groups
+		}
+
+		if prev_info.Meta.User == "" {
+			prev_info.Meta.User = aksess.User
 		}
 
 	} else {
@@ -470,13 +463,14 @@ func (c Pkg) CommitAction() {
 
 	prev_info.Meta.Updated = types.MetaTimeNow()
 
-	if rs := data.Data.PvPut("info/"+pack_spec.Name, prev_info, nil); !rs.OK() {
+	if rs := data.Data.PvPut("info/"+name_lower, prev_info, nil); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Server Error")
 		return
 	}
 
-	channel.Packages++
-	data.Data.PvPut("channel/"+channel.Meta.ID, channel, nil)
+	channel.StatNum++
+	channel.StatSize += pack.Size
+	data.Data.PvPut("channel/"+channel.Meta.Name, channel, nil)
 
 	set.Kind = "PackageCommit"
 }
@@ -537,22 +531,29 @@ func (c Pkg) SetAction() {
 			return
 		}
 
-		currChannel.Packages--
-		prevChannel.Packages++
-
-		if currChannel.Packages < 0 {
-			currChannel.Packages = 0
+		currChannel.StatNum--
+		prevChannel.StatNum++
+		if currChannel.StatNum < 0 {
+			currChannel.StatNum = 0
+		}
+		if prevChannel.StatNum < 0 {
+			prevChannel.StatNum = 0
 		}
 
-		if prevChannel.Packages < 0 {
-			prevChannel.Packages = 0
+		currChannel.StatSize -= prev.Size
+		prevChannel.StatSize += prev.Size
+		if currChannel.StatSize < 0 {
+			currChannel.StatSize = 0
+		}
+		if prevChannel.StatSize < 0 {
+			prevChannel.StatSize = 0
 		}
 
 		prev.Channel = set.Channel
 		prev.Meta.Updated = types.MetaTimeNow()
 
-		data.Data.PvPut("channel/"+currChannel.Meta.ID, currChannel, nil)
-		data.Data.PvPut("channel/"+prevChannel.Meta.ID, prevChannel, nil)
+		data.Data.PvPut("channel/"+currChannel.Meta.Name, currChannel, nil)
+		data.Data.PvPut("channel/"+prevChannel.Meta.Name, prevChannel, nil)
 
 		data.Data.PoPut("p", set.Meta.ID, prev, nil)
 	}
