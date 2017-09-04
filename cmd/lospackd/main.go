@@ -24,8 +24,8 @@ import (
 	"runtime"
 
 	"code.hooto.com/lessos/iam/iamclient"
-	"github.com/lessos/lessgo/httpsrv"
-	"github.com/lessos/lessgo/logger"
+	"github.com/hooto/hlog4g/hlog"
+	"github.com/hooto/httpsrv"
 
 	"code.hooto.com/lessos/lospack/server/config"
 	"code.hooto.com/lessos/lospack/server/data"
@@ -77,6 +77,6 @@ func main() {
 	httpsrv.GlobalService.Config.HttpPort = config.Config.HttpPort
 
 	//
-	logger.Print("info", "running")
+	hlog.Print("info", "running")
 	httpsrv.GlobalService.Start()
 }

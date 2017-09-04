@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"code.hooto.com/lessos/lospack/server/data"
-	"github.com/lessos/lessgo/httpsrv"
+	"github.com/hooto/httpsrv"
 )
 
 type Fs struct {

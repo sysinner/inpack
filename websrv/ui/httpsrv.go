@@ -18,7 +18,7 @@ import (
 	"path/filepath"
 
 	"code.hooto.com/lessos/lospack/server/config"
-	"github.com/lessos/lessgo/httpsrv"
+	"github.com/hooto/httpsrv"
 )
 
 func NewModule(prefix string) httpsrv.Module {
