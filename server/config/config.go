@@ -18,12 +18,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"code.hooto.com/lessos/iam/iamapi"
-	"code.hooto.com/lessos/iam/iamclient"
-	"code.hooto.com/lynkdb/iomix/connect"
+	"github.com/hooto/iam/iamapi"
+	"github.com/hooto/iam/iamclient"
 	"github.com/lessos/lessgo/crypto/idhash"
 	"github.com/lessos/lessgo/encoding/json"
 	"github.com/lessos/lessgo/types"
+	"github.com/lynkdb/iomix/connect"
 )
 
 var (

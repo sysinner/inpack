@@ -23,9 +23,9 @@ import (
 	"os"
 	"runtime"
 
-	"code.hooto.com/lessos/iam/iamclient"
 	"github.com/hooto/hlog4g/hlog"
 	"github.com/hooto/httpsrv"
+	"github.com/hooto/iam/iamclient"
 
 	"code.hooto.com/lessos/lospack/server/config"
 	"code.hooto.com/lessos/lospack/server/data"

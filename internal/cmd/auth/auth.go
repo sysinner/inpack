@@ -19,9 +19,9 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"code.hooto.com/lessos/iam/iamapi"
-	"code.hooto.com/lessos/iam/iamclient"
 	"code.hooto.com/lessos/lospack/internal/ini"
+	"github.com/hooto/iam/iamapi"
+	"github.com/hooto/iam/iamclient"
 )
 
 var (

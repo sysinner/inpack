@@ -22,12 +22,12 @@ import (
 	"sort"
 	"strings"
 
-	"code.hooto.com/lessos/iam/iamapi"
-	"code.hooto.com/lessos/iam/iamclient"
-	"code.hooto.com/lynkdb/iomix/skv"
 	"github.com/eryx/imaging"
 	"github.com/hooto/httpsrv"
+	"github.com/hooto/iam/iamapi"
+	"github.com/hooto/iam/iamclient"
 	"github.com/lessos/lessgo/types"
+	"github.com/lynkdb/iomix/skv"
 
 	"code.hooto.com/lessos/lospack/lpapi"
 	"code.hooto.com/lessos/lospack/server/config"

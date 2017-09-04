@@ -15,8 +15,8 @@
 package v1 // import "code.hooto.com/lessos/lospack/websrv/v1"
 
 import (
-	"code.hooto.com/lessos/iam/iamclient"
 	"github.com/hooto/httpsrv"
+	"github.com/hooto/iam/iamclient"
 	"github.com/lessos/lessgo/types"
 )
 

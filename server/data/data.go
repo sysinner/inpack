@@ -17,11 +17,11 @@ package data // import "code.hooto.com/lessos/lospack/server/data"
 import (
 	"fmt"
 
-	"code.hooto.com/lynkdb/iomix/connect"
-	"code.hooto.com/lynkdb/iomix/fs"
-	"code.hooto.com/lynkdb/iomix/skv"
-	"code.hooto.com/lynkdb/kvgo"
-	"code.hooto.com/lynkdb/localfs"
+	"github.com/lynkdb/iomix/connect"
+	"github.com/lynkdb/iomix/fs"
+	"github.com/lynkdb/iomix/skv"
+	"github.com/lynkdb/kvgo"
+	"github.com/lynkdb/localfs"
 )
 
 var (
