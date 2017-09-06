@@ -1,7 +1,7 @@
 project.name = lospack
 project.version = 0.1.0.dev
 project.vendor = hooto.com
-project.homepage = https://code.hooto.com/lessos/lospack
+project.homepage = https://github.com/lessos/lospack
 project.groups = dev/sys-srv
 
 %build
