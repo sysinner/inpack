@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package lpapi // import "code.hooto.com/lessos/lospack/lpapi"
+package lpapi // import "github.com/lessos/lospack/lpapi"
 
 import (
 	"crypto/sha256"

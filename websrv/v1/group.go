@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1 // import "code.hooto.com/lessos/lospack/websrv/v1"
+package v1 // import "github.com/lessos/lospack/websrv/v1"
 
 import (
 	"github.com/hooto/httpsrv"
 	"github.com/lessos/lessgo/types"
 
-	"code.hooto.com/lessos/lospack/lpapi"
+	"github.com/lessos/lospack/lpapi"
 )
 
 type Group struct {

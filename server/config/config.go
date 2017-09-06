@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package config // import "code.hooto.com/lessos/lospack/server/config"
+package config // import "github.com/lessos/lospack/server/config"
 
 import (
 	"os"

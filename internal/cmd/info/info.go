@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package info // import "code.hooto.com/lessos/lospack/internal/cmd/info"
+package info // import "github.com/lessos/lospack/internal/cmd/info"
 
 import (
 	"errors"
@@ -22,9 +22,9 @@ import (
 	"github.com/lessos/lessgo/net/httpclient"
 	"github.com/lessos/lessgo/types"
 
-	"code.hooto.com/lessos/lospack/internal/cmd/auth"
-	"code.hooto.com/lessos/lospack/internal/ini"
-	"code.hooto.com/lessos/lospack/lpapi"
+	"github.com/lessos/lospack/internal/cmd/auth"
+	"github.com/lessos/lospack/internal/ini"
+	"github.com/lessos/lospack/lpapi"
 )
 
 var (

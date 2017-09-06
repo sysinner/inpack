@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package auth // import "code.hooto.com/lessos/lospack/internal/cmd/auth"
+package auth // import "github.com/lessos/lospack/internal/cmd/auth"
 
 import (
 	"fmt"
 	"os/user"
 	"path/filepath"
 
-	"code.hooto.com/lessos/lospack/internal/ini"
 	"github.com/hooto/iam/iamapi"
 	"github.com/hooto/iam/iamclient"
+	"github.com/lessos/lospack/internal/ini"
 )
 
 var (

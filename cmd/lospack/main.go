@@ -18,10 +18,10 @@ import (
 	"log"
 	"os"
 
-	cmd_build "code.hooto.com/lessos/lospack/internal/cmd/build"
-	cmd_info "code.hooto.com/lessos/lospack/internal/cmd/info"
-	cmd_pack "code.hooto.com/lessos/lospack/internal/cmd/packfile"
-	cmd_push "code.hooto.com/lessos/lospack/internal/cmd/push"
+	cmd_build "github.com/lessos/lospack/internal/cmd/build"
+	cmd_info "github.com/lessos/lospack/internal/cmd/info"
+	cmd_pack "github.com/lessos/lospack/internal/cmd/packfile"
+	cmd_push "github.com/lessos/lospack/internal/cmd/push"
 )
 
 func main() {

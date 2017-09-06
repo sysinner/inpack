@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package data // import "code.hooto.com/lessos/lospack/server/data"
+package data // import "github.com/lessos/lospack/server/data"
 
 import (
 	"fmt"

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package build // import "code.hooto.com/lessos/lospack/internal/cmd/build"
+package build // import "github.com/lessos/lospack/internal/cmd/build"
 
 import (
 	"fmt"
@@ -25,9 +25,9 @@ import (
 	"github.com/lessos/lessgo/encoding/json"
 	"github.com/lessos/lessgo/types"
 
-	"code.hooto.com/lessos/lospack/internal/cliflags"
-	"code.hooto.com/lessos/lospack/internal/ini"
-	"code.hooto.com/lessos/lospack/lpapi"
+	"github.com/lessos/lospack/internal/cliflags"
+	"github.com/lessos/lospack/internal/ini"
+	"github.com/lessos/lospack/lpapi"
 )
 
 // yum install npm optipng

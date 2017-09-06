@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1 // import "code.hooto.com/lessos/lospack/websrv/v1"
+package v1 // import "github.com/lessos/lospack/websrv/v1"
 
 import (
 	"github.com/hooto/httpsrv"
@@ -21,8 +21,8 @@ import (
 	"github.com/lessos/lessgo/types"
 	"github.com/lynkdb/iomix/skv"
 
-	"code.hooto.com/lessos/lospack/lpapi"
-	"code.hooto.com/lessos/lospack/server/data"
+	"github.com/lessos/lospack/lpapi"
+	"github.com/lessos/lospack/server/data"
 )
 
 type Channel struct {

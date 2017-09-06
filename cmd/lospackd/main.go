@@ -27,10 +27,10 @@ import (
 	"github.com/hooto/httpsrv"
 	"github.com/hooto/iam/iamclient"
 
-	"code.hooto.com/lessos/lospack/server/config"
-	"code.hooto.com/lessos/lospack/server/data"
-	"code.hooto.com/lessos/lospack/websrv/ui"
-	"code.hooto.com/lessos/lospack/websrv/v1"
+	"github.com/lessos/lospack/server/config"
+	"github.com/lessos/lospack/server/data"
+	"github.com/lessos/lospack/websrv/ui"
+	"github.com/lessos/lospack/websrv/v1"
 )
 
 var (

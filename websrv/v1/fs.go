@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1 // import "code.hooto.com/lessos/lospack/websrv/v1"
+package v1 // import "github.com/lessos/lospack/websrv/v1"
 
 import (
 	"net/http"
@@ -20,8 +20,8 @@ import (
 	"strings"
 	"time"
 
-	"code.hooto.com/lessos/lospack/server/data"
 	"github.com/hooto/httpsrv"
+	"github.com/lessos/lospack/server/data"
 )
 
 type Fs struct {
