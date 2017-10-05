@@ -27,10 +27,10 @@ import (
 	"github.com/hooto/httpsrv"
 	"github.com/hooto/iam/iamclient"
 
-	"github.com/lessos/lospack/server/config"
-	"github.com/lessos/lospack/server/data"
-	"github.com/lessos/lospack/websrv/ui"
-	"github.com/lessos/lospack/websrv/v1"
+	"github.com/sysinner/inpack/server/config"
+	"github.com/sysinner/inpack/server/data"
+	"github.com/sysinner/inpack/websrv/ui"
+	"github.com/sysinner/inpack/websrv/v1"
 )
 
 var (
@@ -65,8 +65,8 @@ func main() {
 		iamclient.ServiceUrl = config.Config.IamServiceUrl
 	}
 	//
-	httpsrv.GlobalService.ModuleRegister("/lps/v1", v1.NewModule())
-	httpsrv.GlobalService.ModuleRegister("/lps", ui.NewModule())
+	httpsrv.GlobalService.ModuleRegister("/ips/v1", v1.NewModule())
+	httpsrv.GlobalService.ModuleRegister("/ips", ui.NewModule())
 
 	//
 	if config.Config.PprofHttpPort > 0 {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1 // import "github.com/lessos/lospack/websrv/v1"
+package v1 // import "github.com/sysinner/inpack/websrv/v1"
 
 import (
 	"github.com/hooto/httpsrv"

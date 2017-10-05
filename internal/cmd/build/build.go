@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package build // import "github.com/lessos/lospack/internal/cmd/build"
+package build // import "github.com/sysinner/inpack/internal/cmd/build"
 
 import (
 	"fmt"
@@ -25,9 +25,9 @@ import (
 	"github.com/lessos/lessgo/encoding/json"
 	"github.com/lessos/lessgo/types"
 
-	"github.com/lessos/lospack/internal/cliflags"
-	"github.com/lessos/lospack/internal/ini"
-	"github.com/lessos/lospack/lpapi"
+	"github.com/sysinner/inpack/internal/cliflags"
+	"github.com/sysinner/inpack/internal/ini"
+	"github.com/sysinner/inpack/ipapi"
 )
 
 // yum install npm optipng
@@ -36,12 +36,12 @@ import (
 // npm install html-minifier -g
 var (
 	pack_dir          = ""
-	pack_spec         = "lospack.spec"
+	pack_spec         = "inpack.spec"
 	build_tempdir     = ".build_tempdir"
 	build_src_tempdir = ".build_src_tempdir"
 	arg_output_dir    = ""
-	packed_spec_dir   = ".lospack"
-	packed_spec       = packed_spec_dir + "/lospack.json"
+	packed_spec_dir   = ".inpack"
+	packed_spec       = packed_spec_dir + "/inpack.json"
 	jscp              = "uglifyjs %s -c -m -o %s"
 	csscp             = "cleancss --skip-rebase %s -o %s"
 	htmlcp            = "html-minifier -c /tmp/html-minifier.conf %s -o %s"
@@ -150,9 +150,9 @@ func Cmd() error {
 		err        error
 		cfg        *ini.ConfigIni
 		spec_files = []string{
-			fmt.Sprintf("./.lospack/%s", pack_spec),
 			fmt.Sprintf("./%s", pack_spec),
-			fmt.Sprintf("./misc/lospack/%s", pack_spec),
+			fmt.Sprintf("./.inpack/%s", pack_spec),
+			fmt.Sprintf("./misc/inpack/%s", pack_spec),
 		}
 	)
 
@@ -172,41 +172,41 @@ func Cmd() error {
 	}
 
 	if v, ok := cliflags.Value("version"); ok {
-		cfg.Set("project.version", v.String())
+		cfg.Set("project/version", v.String())
 	}
 
 	if v, ok := cliflags.Value("release"); ok {
-		cfg.Set("project.release", v.String())
+		cfg.Set("project/release", v.String())
 	} else {
-		cfg.Set("project.release", "1")
+		cfg.Set("project/release", "1")
 	}
 
-	cfg.Set("project.dist", dist)
+	cfg.Set("project/dist", dist)
 
 	//
-	pkg := lpapi.PackageSpec{
-		Name: cfg.Get("project.name").String(),
-		Version: lpapi.PackageVersion{
-			Version: types.Version(cfg.Get("project.version").String()),
-			Release: types.Version(cfg.Get("project.release").String()),
+	pkg := ipapi.PackageSpec{
+		Name: cfg.Get("project/name").String(),
+		Version: ipapi.PackageVersion{
+			Version: types.Version(cfg.Get("project/version").String()),
+			Release: types.Version(cfg.Get("project/release").String()),
 			Dist:    "all", // dist,
 			Arch:    "src", // arch,
 		},
-		Project: lpapi.PackageProject{
-			Vendor:      cfg.Get("project.vendor").String(),
-			License:     cfg.Get("project.license").String(),
-			Homepage:    cfg.Get("project.homepage").String(),
-			Repository:  cfg.Get("project.repository").String(),
-			Author:      cfg.Get("project.author").String(),
-			Description: cfg.Get("project.description").String(),
+		Project: ipapi.PackageProject{
+			Vendor:      cfg.Get("project/vendor").String(),
+			License:     cfg.Get("project/license").String(),
+			Homepage:    cfg.Get("project/homepage").String(),
+			Repository:  cfg.Get("project/repository").String(),
+			Author:      cfg.Get("project/author").String(),
+			Description: cfg.Get("project/description").String(),
 		},
 		Built: types.MetaTimeNow(),
 	}
-	groups := strings.Split(cfg.Get("project.groups").String(), ",")
+	groups := strings.Split(cfg.Get("project/groups").String(), ",")
 	for _, v := range groups {
 		pkg.Groups.Set(v)
 	}
-	tags := strings.Split(cfg.Get("project.keywords").String(), ",")
+	tags := strings.Split(cfg.Get("project/keywords").String(), ",")
 	for _, v := range tags {
 		pkg.Project.Keywords.Set(v)
 	}
@@ -231,7 +231,7 @@ Building
 	//
 	if _, ok := cliflags.Value("build_src"); ok {
 
-		target_name := lpapi.PackageFilename(pkg.Name, pkg.Version)
+		target_name := ipapi.PackageFilename(pkg.Name, pkg.Version)
 
 		target_path := target_name + ".txz"
 		if arg_output_dir != "" {
@@ -276,7 +276,7 @@ Building
 	pkg.Version.Arch = arch
 
 	if _, ok := cliflags.Value("build_nocompress"); !ok {
-		target_path := lpapi.PackageFilename(pkg.Name, pkg.Version) + ".txz"
+		target_path := ipapi.PackageFilename(pkg.Name, pkg.Version) + ".txz"
 		if arg_output_dir != "" {
 			target_path = arg_output_dir + "/" + target_path
 		}
@@ -286,7 +286,7 @@ Building
 		}
 	}
 
-	cfg.Params("lospack__pack_dir", pack_dir)
+	cfg.Params("inpack__pack_dir", pack_dir)
 	cfg.Params("buildroot", build_tempdir)
 	cfg.Params("project__version", string(pkg.Version.Version))
 	cfg.Params("project__release", string(pkg.Version.Release))
@@ -353,7 +353,7 @@ Building
 	}
 
 	if _, ok := cliflags.Value("build_nocompress"); !ok {
-		target_name := lpapi.PackageFilename(pkg.Name, pkg.Version)
+		target_name := ipapi.PackageFilename(pkg.Name, pkg.Version)
 		if err = _tar_compress(build_tempdir, target_name); err != nil {
 			return err
 		}
@@ -543,7 +543,7 @@ func _cmd(script string) error {
 	script = "set -e\nset -o pipefail\n" + script + "\nexit 0\n"
 
 	if out, err := exec.Command("bash", "-c", script).Output(); err != nil {
-		return fmt.Errorf("CMD ERR(%s) %s\nSCRIPT: %s", err.Error(), string(out), script)
+		return fmt.Errorf("CMD ERR(%s) (%s)\nSCRIPT: {{{%s}}}", err.Error(), string(out), script)
 	}
 
 	return nil

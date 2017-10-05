@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package push // import "github.com/lessos/lospack/internal/cmd/push"
+package push // import "github.com/sysinner/inpack/internal/cmd/push"
 
 import (
 	"encoding/base64"
@@ -26,10 +26,10 @@ import (
 	"github.com/lessos/lessgo/net/httpclient"
 	"github.com/lessos/lessgo/types"
 
-	"github.com/lessos/lospack/internal/cliflags"
-	"github.com/lessos/lospack/internal/cmd/auth"
-	"github.com/lessos/lospack/internal/ini"
-	"github.com/lessos/lospack/lpapi"
+	"github.com/sysinner/inpack/internal/cliflags"
+	"github.com/sysinner/inpack/internal/cmd/auth"
+	"github.com/sysinner/inpack/internal/ini"
+	"github.com/sysinner/inpack/ipapi"
 )
 
 var (
@@ -37,7 +37,7 @@ var (
 	arg_channel   = ""
 	cfg           *ini.ConfigIni
 	err           error
-	pkg_spec_name = ".lospack/lospack.json"
+	pkg_spec_name = ".inpack/inpack.json"
 )
 
 func Cmd() error {
@@ -67,7 +67,7 @@ func Cmd() error {
 		return err
 	}
 
-	var pack_spec lpapi.PackageSpec
+	var pack_spec ipapi.PackageSpec
 	if err := json.Decode(spec, &pack_spec); err != nil {
 		return err
 	}
@@ -84,9 +84,9 @@ func Cmd() error {
 
 	{
 		url := fmt.Sprintf(
-			"%s/lps/v1/pkg/entry?id=%s",
+			"%s/ips/v1/pkg/entry?id=%s",
 			cfg.Get("access_key", "service_url").String(),
-			lpapi.PackageMetaId(pack_spec.Name, pack_spec.Version),
+			ipapi.PackageMetaId(pack_spec.Name, pack_spec.Version),
 		)
 
 		hcp := httpclient.Get(url)
@@ -99,16 +99,16 @@ func Cmd() error {
 		}
 		if rspkg.Kind == "Package" {
 			fmt.Printf("  Target Package (%s) already existed\n",
-				lpapi.PackageFilename(pack_spec.Name, pack_spec.Version))
+				ipapi.PackageFilename(pack_spec.Name, pack_spec.Version))
 			return nil
 		}
 	}
 
 	// do commit
-	req := lpapi.PackageCommit{
+	req := ipapi.PackageCommit{
 		Size:     pack_stat.Size(),
 		Name:     pack_stat.Name(),
-		Data:     "data:lospack/txz;base64,",
+		Data:     "data:inpack/txz;base64,",
 		SumCheck: "sha1:TODO",
 		Channel:  arg_channel,
 	}
@@ -125,7 +125,7 @@ func Cmd() error {
 	req.Data += base64.StdEncoding.EncodeToString(bs)
 
 	hc := httpclient.Put(fmt.Sprintf(
-		"%s/lps/v1/pkg/commit",
+		"%s/ips/v1/pkg/commit",
 		cfg.Get("access_key", "service_url").String(),
 	))
 	defer hc.Close()

@@ -1,5 +1,6 @@
-project.name = demo
-project.version = 0.0.1
+[project]
+name = demo
+version = 0.0.1
 
 %build
 go build -ldflags "-s -w" -o {{.buildroot}}/demo main.go

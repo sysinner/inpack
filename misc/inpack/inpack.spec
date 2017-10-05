@@ -1,8 +1,9 @@
-project.name = lospack
-project.version = 0.1.0.dev
-project.vendor = hooto.com
-project.homepage = https://github.com/lessos/lospack
-project.groups = dev/sys-srv
+[project]
+name = inpack
+version = 0.1.0.dev
+vendor = hooto.com
+homepage = https://github.com/sysinner/inpack
+groups = dev/sys-srv
 
 %build
 export PATH=$PATH:/usr/local/go/bin:/opt/gopath/bin
@@ -12,8 +13,8 @@ mkdir -p {{.buildroot}}/bin
 mkdir -p {{.buildroot}}/var/{data,storage}
 mkdir -p {{.buildroot}}/webui/lessui/
 cp -rp webui/lessui/* {{.buildroot}}/webui/lessui/
-go build -ldflags "-s -w" -o {{.buildroot}}/bin/lospackd cmd/lospackd/main.go
-go build -ldflags "-s -w" -o {{.buildroot}}/bin/lospack cmd/lospack/main.go
+go build -ldflags "-s -w" -o {{.buildroot}}/bin/inpackd cmd/inpackd/main.go
+go build -ldflags "-s -w" -o {{.buildroot}}/bin/inpack cmd/inpack/main.go
 
 
 %files
@@ -29,7 +30,7 @@ webui/pkginfo/
 webui/css/
 webui/js/
 webui/img/
-webui/lps.htm
+webui/ips.htm
 webui/main.html
 
 

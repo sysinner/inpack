@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1 // import "github.com/lessos/lospack/websrv/v1"
+package v1 // import "github.com/sysinner/inpack/websrv/v1"
 
 import (
 	"github.com/hooto/httpsrv"
 	"github.com/lessos/lessgo/types"
 
-	"github.com/lessos/lospack/lpapi"
+	"github.com/sysinner/inpack/ipapi"
 )
 
 type Group struct {
@@ -27,11 +27,11 @@ type Group struct {
 
 func (c Group) ListAction() {
 
-	ls := lpapi.PackageGroupList{
+	ls := ipapi.PackageGroupList{
 		TypeMeta: types.TypeMeta{
 			Kind: "PackageGroupList",
 		},
-		Items: lpapi.PackageGroups,
+		Items: ipapi.PackageGroups,
 	}
 
 	c.Response.Out.Header().Set("Access-Control-Allow-Origin", "*")

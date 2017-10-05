@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package auth // import "github.com/lessos/lospack/internal/cmd/auth"
+package auth // import "github.com/sysinner/inpack/internal/cmd/auth"
 
 import (
 	"fmt"
@@ -21,7 +21,7 @@ import (
 
 	"github.com/hooto/iam/iamapi"
 	"github.com/hooto/iam/iamclient"
-	"github.com/lessos/lospack/internal/ini"
+	"github.com/sysinner/inpack/internal/ini"
 )
 
 var (
@@ -36,8 +36,8 @@ func init() {
 		panic(err)
 	}
 	arg_conf_paths = []string{
-		".lospack",
-		usr.HomeDir + "/.lospack",
+		".inpack",
+		usr.HomeDir + "/.inpack",
 	}
 
 	for _, v := range arg_conf_paths {

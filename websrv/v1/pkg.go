@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1 // import "github.com/lessos/lospack/websrv/v1"
+package v1 // import "github.com/sysinner/inpack/websrv/v1"
 
 import (
 	"crypto/sha256"
@@ -32,13 +32,13 @@ import (
 	"github.com/lessos/lessgo/types"
 	"github.com/lynkdb/iomix/skv"
 
-	"github.com/lessos/lospack/lpapi"
-	"github.com/lessos/lospack/server/config"
-	"github.com/lessos/lospack/server/data"
+	"github.com/sysinner/inpack/ipapi"
+	"github.com/sysinner/inpack/server/config"
+	"github.com/sysinner/inpack/server/data"
 )
 
 const (
-	pkg_spec_name = ".lospack/lospack.json"
+	pkg_spec_name = ".inpack/inpack.json"
 )
 
 type Pkg struct {
@@ -51,13 +51,13 @@ func (c Pkg) DlAction() {
 
 	file := filepath.Clean(c.Request.RequestPath)
 
-	if !strings.HasPrefix(file, "lps/v1/pkg/dl/") {
+	if !strings.HasPrefix(file, "ips/v1/pkg/dl/") {
 		c.RenderError(400, "Bad Request")
 		return
 	}
 
 	// TODO auth
-	opts := config.Config.IoConnectors.Options("lps_storage")
+	opts := config.Config.IoConnectors.Options("inpack_storage")
 	if opts == nil {
 		c.RenderError(400, "Bad Request")
 		return
@@ -71,13 +71,13 @@ func (c Pkg) DlAction() {
 	http.ServeFile(
 		c.Response.Out,
 		c.Request.Request,
-		fs_dir+file[len("lps/v1/pkg/dl"):],
+		fs_dir+file[len("ips/v1/pkg/dl"):],
 	)
 }
 
 func (c Pkg) ListAction() {
 
-	ls := lpapi.PackageList{}
+	ls := ipapi.PackageList{}
 	defer c.RenderJson(&ls)
 
 	var (
@@ -87,7 +87,7 @@ func (c Pkg) ListAction() {
 		limit     = int(c.Params.Int64("limit"))
 	)
 
-	if !lpapi.PackageNameRe.MatchString(q_name) {
+	if !ipapi.PackageNameRe.MatchString(q_name) {
 		ls.Error = types.NewErrorMeta("400", "Invalid Package Name")
 		return
 	}
@@ -112,7 +112,7 @@ func (c Pkg) ListAction() {
 			// TOPO return 0
 		}
 
-		var set lpapi.Package
+		var set ipapi.Package
 		if err := entry.Decode(&set); err == nil {
 
 			if q_name != "" && q_name != set.Meta.Name {
@@ -128,9 +128,9 @@ func (c Pkg) ListAction() {
 			}
 
 			if us.IsLogin() && (us.UserName == set.Meta.User || us.UserName == "sysadmin") {
-				set.OpPerm = lpapi.OpPermRead | lpapi.OpPermWrite
+				set.OpPerm = ipapi.OpPermRead | ipapi.OpPermWrite
 			} else {
-				set.OpPerm = lpapi.OpPermRead
+				set.OpPerm = ipapi.OpPermRead
 			}
 
 			ls.Items = append(ls.Items, set)
@@ -154,7 +154,7 @@ func (c Pkg) EntryAction() {
 
 	var set struct {
 		types.TypeMeta
-		lpapi.Package
+		ipapi.Package
 	}
 	defer c.RenderJson(&set)
 
@@ -168,12 +168,12 @@ func (c Pkg) EntryAction() {
 		return
 	} else if name != "" {
 
-		if !lpapi.PackageNameRe.MatchString(name) {
+		if !ipapi.PackageNameRe.MatchString(name) {
 			set.Error = types.NewErrorMeta("400", "Invalid Package Name")
 			return
 		}
 
-		version := lpapi.PackageVersion{
+		version := ipapi.PackageVersion{
 			Version: types.Version(c.Params.Get("version")),
 			Release: types.Version(c.Params.Get("release")),
 			Dist:    c.Params.Get("dist"),
@@ -184,7 +184,7 @@ func (c Pkg) EntryAction() {
 			return
 		}
 
-		id = lpapi.PackageMetaId(name, version)
+		id = ipapi.PackageMetaId(name, version)
 	}
 
 	if id != "" {
@@ -210,7 +210,7 @@ func (c Pkg) CommitAction() {
 	set := types.TypeMeta{}
 	defer c.RenderJson(&set)
 
-	var req lpapi.PackageCommit
+	var req ipapi.PackageCommit
 	if err := c.Request.JsonDecode(&req); err != nil {
 		set.Error = types.NewErrorMeta("400", err.Error())
 		return
@@ -242,7 +242,7 @@ func (c Pkg) CommitAction() {
 
 	var (
 		chs     = channelList()
-		channel *lpapi.PackageChannel
+		channel *ipapi.PackageChannel
 	)
 	for _, v := range chs {
 		if v.Meta.Name == req.Channel {
@@ -300,7 +300,7 @@ func (c Pkg) CommitAction() {
 		return
 	}
 
-	var pack_spec lpapi.PackageSpec
+	var pack_spec ipapi.PackageSpec
 	if err := json.Decode(spec, &pack_spec); err != nil {
 		set.Error = types.NewErrorMeta("400", err.Error())
 		return
@@ -310,14 +310,14 @@ func (c Pkg) CommitAction() {
 		return
 	}
 
-	pkg_filename := lpapi.PackageFilename(pack_spec.Name, pack_spec.Version)
+	pkg_filename := ipapi.PackageFilename(pack_spec.Name, pack_spec.Version)
 	if !strings.HasPrefix(req.Name, pkg_filename) {
 		set.Error = types.NewErrorMeta("400", "Package Name Error")
 		return
 	}
 
 	//
-	pkg_id := lpapi.PackageMetaId(pack_spec.Name, pack_spec.Version)
+	pkg_id := ipapi.PackageMetaId(pack_spec.Name, pack_spec.Version)
 
 	rs := data.Data.PoGet("p", pkg_id)
 	if !rs.NotFound() {
@@ -380,7 +380,7 @@ func (c Pkg) CommitAction() {
 	// }
 
 	// package file
-	pack := lpapi.Package{
+	pack := ipapi.Package{
 		Meta: types.InnerObjectMeta{
 			ID:      pkg_id,
 			Name:    pack_spec.Name,
@@ -404,11 +404,11 @@ func (c Pkg) CommitAction() {
 		return
 	}
 
-	var prev_info lpapi.PackageInfo
+	var prev_info ipapi.PackageInfo
 	name_lower := strings.ToLower(pack_spec.Name)
 	if rs := data.Data.PvGet("info/" + name_lower); rs.NotFound() {
 
-		prev_info = lpapi.PackageInfo{
+		prev_info = ipapi.PackageInfo{
 			Meta: types.InnerObjectMeta{
 				Name:    pack_spec.Name,
 				User:    aksess.User,
@@ -479,7 +479,7 @@ func (c Pkg) SetAction() {
 
 	var set struct {
 		types.TypeMeta
-		lpapi.Package
+		ipapi.Package
 	}
 	defer c.RenderJson(&set)
 
@@ -500,7 +500,7 @@ func (c Pkg) SetAction() {
 		return
 	}
 
-	var prev lpapi.Package
+	var prev ipapi.Package
 	if err := rs.Decode(&prev); err != nil {
 		set.Error = types.NewErrorMeta("500", "Server Error")
 		return
@@ -515,8 +515,8 @@ func (c Pkg) SetAction() {
 	if prev.Channel != set.Channel {
 
 		var (
-			prevChannel lpapi.PackageChannel
-			currChannel lpapi.PackageChannel
+			prevChannel ipapi.PackageChannel
+			currChannel ipapi.PackageChannel
 		)
 
 		if rs := data.Data.PvGet("channel/" + set.Channel); !rs.OK() ||
@@ -561,9 +561,9 @@ func (c Pkg) SetAction() {
 	set.Kind = "Package"
 }
 
-func channelList() []lpapi.PackageChannel {
+func channelList() []ipapi.PackageChannel {
 
-	sets := []lpapi.PackageChannel{}
+	sets := []ipapi.PackageChannel{}
 
 	rs := data.Data.PvScan("channel/", "", "", 100)
 	if !rs.OK() {
@@ -572,7 +572,7 @@ func channelList() []lpapi.PackageChannel {
 
 	rs.KvEach(func(entry *skv.ResultEntry) int {
 
-		var set lpapi.PackageChannel
+		var set ipapi.PackageChannel
 		if err := entry.Decode(&set); err == nil {
 			sets = append(sets, set)
 		}

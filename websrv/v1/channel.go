@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1 // import "github.com/lessos/lospack/websrv/v1"
+package v1 // import "github.com/sysinner/inpack/websrv/v1"
 
 import (
 	"github.com/hooto/httpsrv"
@@ -21,8 +21,8 @@ import (
 	"github.com/lessos/lessgo/types"
 	"github.com/lynkdb/iomix/skv"
 
-	"github.com/lessos/lospack/lpapi"
-	"github.com/lessos/lospack/server/data"
+	"github.com/sysinner/inpack/ipapi"
+	"github.com/sysinner/inpack/server/data"
 )
 
 type Channel struct {
@@ -37,14 +37,14 @@ func (c *Channel) Init() int {
 
 func (c Channel) ListAction() {
 
-	sets := lpapi.PackageChannelList{}
+	sets := ipapi.PackageChannelList{}
 	defer c.RenderJson(&sets)
 
 	if rs := data.Data.PvScan("channel/", "", "", 100); rs.OK() {
 
 		rs.KvEach(func(entry *skv.ResultEntry) int {
 
-			var set lpapi.PackageChannel
+			var set ipapi.PackageChannel
 			if err := entry.Decode(&set); err == nil {
 				if c.us.UserName == "sysadmin" ||
 					c.us.UserName == set.Meta.User ||
@@ -62,11 +62,11 @@ func (c Channel) ListAction() {
 
 func (c Channel) EntryAction() {
 
-	var set lpapi.PackageChannel
+	var set ipapi.PackageChannel
 	defer c.RenderJson(&set)
 
 	name := c.Params.Get("name")
-	if !lpapi.ChannelNameRe.MatchString(name) {
+	if !ipapi.ChannelNameRe.MatchString(name) {
 		set.Error = types.NewErrorMeta("400", "Invalid Channel Name")
 		return
 	}
@@ -87,7 +87,7 @@ func (c Channel) EntryAction() {
 
 func (c Channel) SetAction() {
 
-	set := lpapi.PackageChannel{}
+	set := ipapi.PackageChannel{}
 	defer c.RenderJson(&set)
 
 	if err := c.Request.JsonDecode(&set); err != nil {
@@ -95,12 +95,12 @@ func (c Channel) SetAction() {
 		return
 	}
 
-	if !lpapi.ChannelNameRe.MatchString(set.Meta.Name) {
+	if !ipapi.ChannelNameRe.MatchString(set.Meta.Name) {
 		set.Error = types.NewErrorMeta("400", "Invalid Channel Name")
 		return
 	}
 
-	if !lpapi.ChannelVendorRe.MatchString(set.VendorName) {
+	if !ipapi.ChannelVendorRe.MatchString(set.VendorName) {
 		set.Error = types.NewErrorMeta("400", "Invalid Vendor Name")
 		return
 	}
@@ -112,7 +112,7 @@ func (c Channel) SetAction() {
 
 	if rs := data.Data.PvGet("channel/" + set.Meta.Name); rs.OK() {
 
-		var prev lpapi.PackageChannel
+		var prev ipapi.PackageChannel
 
 		if err := rs.Decode(&prev); err != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error")
@@ -138,7 +138,7 @@ func (c Channel) SetAction() {
 		set.Meta.Created = types.MetaTimeNow()
 
 		if set.Roles == nil {
-			set.Roles = &lpapi.PackageChannelRoles{}
+			set.Roles = &ipapi.PackageChannelRoles{}
 			set.Roles.Read.Set(100)
 		}
 	}
@@ -156,7 +156,7 @@ func (c Channel) SetAction() {
 
 func (c Channel) DeleteAction() {
 
-	set := lpapi.PackageChannel{}
+	set := ipapi.PackageChannel{}
 	defer c.RenderJson(&set)
 
 	if !c.us.IsLogin() || c.us.UserName != "sysadmin" {
@@ -165,7 +165,7 @@ func (c Channel) DeleteAction() {
 	}
 
 	name := c.Params.Get("name")
-	if !lpapi.ChannelNameRe.MatchString(name) {
+	if !ipapi.ChannelNameRe.MatchString(name) {
 		set.Error = types.NewErrorMeta("400", "Invalid Channel Name")
 		return
 	}

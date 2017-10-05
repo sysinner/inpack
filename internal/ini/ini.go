@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ini // import "github.com/lessos/lospack/internal/ini"
+package ini // import "github.com/sysinner/inpack/internal/ini"
 
 import (
 	"bufio"
@@ -115,6 +115,8 @@ func (cfg *ConfigIni) parse() {
 
 		if bytes.HasPrefix(line, []byte{'%'}) {
 
+			section_open = "main"
+
 			if tag_open != "" {
 				cfg.data.Set(section_open+"/"+tag_open, tag_value)
 			}
@@ -186,7 +188,11 @@ func (cfg *ConfigIni) Get(args ...string) types.Bytex {
 	var val types.Bytex
 
 	if len(args) == 1 {
-		val, _ = cfg.data.Get("main/" + args[0])
+		if strings.IndexByte(args[0], '/') > 0 {
+			val, _ = cfg.data.Get(args[0])
+		} else {
+			val, _ = cfg.data.Get("main/" + args[0])
+		}
 	} else if len(args) == 2 {
 		val, _ = cfg.data.Get(args[0] + "/" + args[1])
 	}
@@ -208,6 +214,8 @@ func (cfg *ConfigIni) Set(args ...string) error {
 
 	if len(args) == 3 {
 		cfg.data.Set(args[0]+"/"+args[1], args[2])
+	} else if strings.IndexByte(args[0], '/') > 0 {
+		cfg.data.Set(args[0], args[1])
 	} else {
 		cfg.data.Set("main/"+args[0], args[1])
 	}

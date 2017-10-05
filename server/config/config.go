@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package config // import "github.com/lessos/lospack/server/config"
+package config // import "github.com/sysinner/inpack/server/config"
 
 import (
 	"os"
@@ -58,52 +58,52 @@ func Init(prefix string) error {
 	if prefix == "" {
 
 		if prefix, err = filepath.Abs(filepath.Dir(os.Args[0]) + "/.."); err != nil {
-			prefix = "/home/action/apps/lospack"
+			prefix = "/home/action/apps/inpack"
 		}
 	}
 
 	Prefix = filepath.Clean(prefix)
 
 	//
-	file := Prefix + "/etc/lps_config.json"
+	file := Prefix + "/etc/inpack_config.json"
 	if err := json.DecodeFile(file, &Config); err != nil {
 		return err
 	}
 	Config.filepath = file
 
-	if opts := Config.IoConnectors.Options("database"); opts == nil {
+	if opts := Config.IoConnectors.Options("inpack_database"); opts == nil {
 		Config.IoConnectors.SetOptions(connect.ConnOptions{
-			Name:      "lps_database",
+			Name:      "inpack_database",
 			Connector: "iomix/skv/Connector",
 		})
 	}
 
-	if opts := Config.IoConnectors.Options("storage"); opts == nil {
+	if opts := Config.IoConnectors.Options("inpack_storage"); opts == nil {
 		Config.IoConnectors.SetOptions(connect.ConnOptions{
-			Name:      "lps_storage",
+			Name:      "inpack_storage",
 			Connector: "iomix/fs/Connector",
 		})
 	}
 
 	for _, opts := range Config.IoConnectors {
 
-		if opts.Name == "lps_database" &&
+		if opts.Name == "inpack_database" &&
 			opts.Connector == "iomix/skv/Connector" {
 
 			opts.Driver = types.NewNameIdentifier("lynkdb/kvgo")
 
 			if v := opts.Value("data_dir"); v == "" {
-				opts.SetValue("data_dir", prefix+"/var/lps_database")
+				opts.SetValue("data_dir", prefix+"/var/inpack_database")
 			}
 		}
 
-		if opts.Name == "lps_storage" &&
+		if opts.Name == "inpack_storage" &&
 			opts.Connector == "iomix/fs/Connector" {
 
 			opts.Driver = types.NewNameIdentifier("lynkdb/localfs")
 
 			if v := opts.Value("data_dir"); v == "" {
-				opts.SetValue("data_dir", prefix+"/var/lps_storage")
+				opts.SetValue("data_dir", prefix+"/var/inpack_storage")
 			}
 		}
 	}
@@ -127,15 +127,15 @@ func IamAppInstance() iamapi.AppInstance {
 			User: "sysadmin",
 		},
 		Version:  Version,
-		AppID:    "lospack",
-		AppTitle: "lessOS Package Service",
+		AppID:    "inpack-server",
+		AppTitle: "SysInner Package Server",
 		Status:   1,
 		Url:      "",
 		Privileges: []iamapi.AppPrivilege{
 			{
-				Privilege: "lps.admin",
+				Privilege: "inpack.admin",
 				Roles:     []uint32{1},
-				Desc:      "Package Management",
+				Desc:      "Package Manager",
 			},
 		},
 		SecretKey: Config.SecretKey,

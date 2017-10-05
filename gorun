@@ -1,9 +1,9 @@
 #!/bin/bash
 
-rm -f ./bin/lospackd
+rm -f ./bin/inpackd
 
-time go build -ldflags "-s -w" -o ./bin/lospackd ./cmd/lospackd/main.go
+time go build -ldflags "-s -w" -o ./bin/inpackd ./cmd/inpackd/main.go
 
-./bin/lospackd -logtostderr=true
+./bin/inpackd -logtostderr=true
 
 

@@ -18,10 +18,10 @@ import (
 	"log"
 	"os"
 
-	cmd_build "github.com/lessos/lospack/internal/cmd/build"
-	cmd_info "github.com/lessos/lospack/internal/cmd/info"
-	cmd_pack "github.com/lessos/lospack/internal/cmd/packfile"
-	cmd_push "github.com/lessos/lospack/internal/cmd/push"
+	cmd_build "github.com/sysinner/inpack/internal/cmd/build"
+	cmd_info "github.com/sysinner/inpack/internal/cmd/info"
+	cmd_pack "github.com/sysinner/inpack/internal/cmd/packfile"
+	cmd_push "github.com/sysinner/inpack/internal/cmd/push"
 )
 
 func main() {

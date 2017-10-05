@@ -18,7 +18,7 @@ import (
 	"path/filepath"
 
 	"github.com/hooto/httpsrv"
-	"github.com/lessos/lospack/server/config"
+	"github.com/sysinner/inpack/server/config"
 )
 
 func NewModule(prefix string) httpsrv.Module {
@@ -39,7 +39,7 @@ func NewModule(prefix string) httpsrv.Module {
 	module.RouteSet(httpsrv.Route{
 		Type:       httpsrv.RouteTypeStatic,
 		Path:       "-",
-		StaticPath: prefix + "/webui/lps/tpl",
+		StaticPath: prefix + "/webui/ips/tpl",
 	})
 
 	return module

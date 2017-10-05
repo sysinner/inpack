@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cliflags // import "github.com/lessos/lospack/internal/cliflags"
+package cliflags // import "github.com/sysinner/inpack/internal/cliflags"
 
 import (
 	"os"

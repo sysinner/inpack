@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package info // import "github.com/lessos/lospack/internal/cmd/info"
+package info // import "github.com/sysinner/inpack/internal/cmd/info"
 
 import (
 	"errors"
@@ -22,9 +22,9 @@ import (
 	"github.com/lessos/lessgo/net/httpclient"
 	"github.com/lessos/lessgo/types"
 
-	"github.com/lessos/lospack/internal/cmd/auth"
-	"github.com/lessos/lospack/internal/ini"
-	"github.com/lessos/lospack/lpapi"
+	"github.com/sysinner/inpack/internal/cmd/auth"
+	"github.com/sysinner/inpack/internal/ini"
+	"github.com/sysinner/inpack/ipapi"
 )
 
 var (
@@ -45,14 +45,14 @@ func List() error {
 	}
 
 	hc := httpclient.Get(fmt.Sprintf(
-		"%s/lps/v1/pkg-info/list",
+		"%s/ips/v1/pkg-info/list",
 		cfg.Get("access_key", "service_url").String(),
 	))
 	defer hc.Close()
 
 	hc.Header("Authorization", aka.Encode())
 
-	var ls lpapi.PackageInfoList
+	var ls ipapi.PackageInfoList
 	if err = hc.ReplyJson(&ls); err != nil {
 		return err
 	}

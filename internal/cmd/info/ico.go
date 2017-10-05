@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package info // import "github.com/lessos/lospack/internal/cmd/info"
+package info // import "github.com/sysinner/inpack/internal/cmd/info"
 
 import (
 	"encoding/base64"
@@ -27,9 +27,9 @@ import (
 	"github.com/lessos/lessgo/net/httpclient"
 	"github.com/lessos/lessgo/types"
 
-	"github.com/lessos/lospack/internal/cliflags"
-	"github.com/lessos/lospack/internal/cmd/auth"
-	"github.com/lessos/lospack/lpapi"
+	"github.com/sysinner/inpack/internal/cliflags"
+	"github.com/sysinner/inpack/internal/cmd/auth"
+	"github.com/sysinner/inpack/ipapi"
 )
 
 var (
@@ -73,7 +73,7 @@ func IcoSet() error {
 		return err
 	}
 
-	req := lpapi.PackageInfoIcoSet{
+	req := ipapi.PackageInfoIcoSet{
 		Type: arg_ico_type,
 		Size: pack_stat.Size(),
 		Name: arg_pkgname,
@@ -101,7 +101,7 @@ func IcoSet() error {
 	}
 
 	hc := httpclient.Put(fmt.Sprintf(
-		"%s/lps/v1/pkg-info/ico-set",
+		"%s/ips/v1/pkg-info/ico-set",
 		cfg.Get("access_key", "service_url").String(),
 	))
 	defer hc.Close()

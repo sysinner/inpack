@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1 // import "github.com/lessos/lospack/websrv/v1"
+package v1 // import "github.com/sysinner/inpack/websrv/v1"
 
 import (
 	"bytes"
@@ -29,9 +29,9 @@ import (
 	"github.com/lessos/lessgo/types"
 	"github.com/lynkdb/iomix/skv"
 
-	"github.com/lessos/lospack/lpapi"
-	"github.com/lessos/lospack/server/config"
-	"github.com/lessos/lospack/server/data"
+	"github.com/sysinner/inpack/ipapi"
+	"github.com/sysinner/inpack/server/config"
+	"github.com/sysinner/inpack/server/data"
 )
 
 var (
@@ -51,7 +51,7 @@ type PkgInfo struct {
 
 func (c PkgInfo) ListAction() {
 
-	sets := lpapi.PackageInfoList{}
+	sets := ipapi.PackageInfoList{}
 	defer c.RenderJson(&sets)
 
 	var (
@@ -74,7 +74,7 @@ func (c PkgInfo) ListAction() {
 			return -1
 		}
 
-		var set lpapi.PackageInfo
+		var set ipapi.PackageInfo
 		if err := entry.Decode(&set); err == nil {
 
 			if q_text != "" && !strings.Contains(set.Meta.Name, q_text) {
@@ -86,9 +86,9 @@ func (c PkgInfo) ListAction() {
 			}
 
 			if us.IsLogin() && (us.UserName == set.Meta.User || us.UserName == "sysadmin") {
-				set.OpPerm = lpapi.OpPermRead | lpapi.OpPermWrite
+				set.OpPerm = ipapi.OpPermRead | ipapi.OpPermWrite
 			} else {
-				set.OpPerm = lpapi.OpPermRead
+				set.OpPerm = ipapi.OpPermRead
 			}
 
 			sets.Items = append(sets.Items, set)
@@ -106,11 +106,11 @@ func (c PkgInfo) ListAction() {
 
 func (c PkgInfo) EntryAction() {
 
-	set := lpapi.PackageInfo{}
+	set := ipapi.PackageInfo{}
 	defer c.RenderJson(&set)
 
 	name := c.Params.Get("name")
-	if !lpapi.PackageNameRe.MatchString(name) {
+	if !ipapi.PackageNameRe.MatchString(name) {
 		set.Error = types.NewErrorMeta("404", "Invalid Package Name")
 		return
 	}
@@ -131,7 +131,7 @@ func (c PkgInfo) EntryAction() {
 
 func (c PkgInfo) SetAction() {
 
-	set := lpapi.PackageInfo{}
+	set := ipapi.PackageInfo{}
 	defer c.RenderJson(&set)
 
 	if err := c.Request.JsonDecode(&set); err != nil {
@@ -139,7 +139,7 @@ func (c PkgInfo) SetAction() {
 		return
 	}
 
-	if !lpapi.PackageNameRe.MatchString(set.Meta.Name) {
+	if !ipapi.PackageNameRe.MatchString(set.Meta.Name) {
 		set.Error = types.NewErrorMeta("404", "PackageInfo Not Found")
 		return
 	}
@@ -149,7 +149,7 @@ func (c PkgInfo) SetAction() {
 		return
 	} else {
 
-		var prev lpapi.PackageInfo
+		var prev ipapi.PackageInfo
 
 		if err := rs.Decode(&prev); err != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error")
@@ -186,7 +186,7 @@ func (c PkgInfo) IcoAction() {
 		ico_size = int(c.Params.Int64("size"))
 	)
 
-	if !lpapi.PackageNameRe.MatchString(name) {
+	if !ipapi.PackageNameRe.MatchString(name) {
 		return
 	}
 	name = strings.ToLower(name)
@@ -208,7 +208,7 @@ func (c PkgInfo) IcoAction() {
 		ico_sh = ico_sh / 2
 	}
 
-	var ico lpapi.PackageInfoIco
+	var ico ipapi.PackageInfoIco
 	if rs := data.Data.PvGet("ico/" + name + "/" + ico_type); rs.OK() {
 		rs.Decode(&ico)
 		if len(ico.Data) > 10 {
@@ -249,13 +249,13 @@ func (c PkgInfo) IcoSetAction() {
 	)
 	defer c.RenderJson(&set)
 
-	var req lpapi.PackageInfoIcoSet
+	var req ipapi.PackageInfoIcoSet
 	if err := c.Request.JsonDecode(&req); err != nil {
 		set.Error = types.NewErrorMeta(types.ErrCodeBadArgument, "BadArgument")
 		return
 	}
 
-	if !lpapi.PackageNameRe.MatchString(req.Name) {
+	if !ipapi.PackageNameRe.MatchString(req.Name) {
 		set.Error = types.NewErrorMeta(types.ErrCodeBadArgument, "Invalid Package Name")
 		return
 	}
@@ -297,7 +297,7 @@ func (c PkgInfo) IcoSetAction() {
 		}
 	}
 
-	var info lpapi.PackageInfo
+	var info ipapi.PackageInfo
 	if rs := data.Data.PvGet("info/" + strings.ToLower(req.Name)); rs.OK() {
 		rs.Decode(&info)
 	}
@@ -331,7 +331,7 @@ func (c PkgInfo) IcoSetAction() {
 		return
 	}
 
-	ico := lpapi.PackageInfoIco{
+	ico := ipapi.PackageInfoIco{
 		Mime: "image/png",
 		Data: base64.StdEncoding.EncodeToString(imgbuf.Bytes()),
 	}
