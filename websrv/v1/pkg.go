@@ -98,7 +98,7 @@ func (c Pkg) ListAction() {
 		limit = 200
 	}
 
-	rs := data.Data.PoScan("p", []byte{}, []byte{}, 1000)
+	rs := data.Data.ProgScan(ipapi.DataPackKey(""), ipapi.DataPackKey(""), 1000)
 	if !rs.OK() {
 		ls.Error = types.NewErrorMeta("500", rs.Bytex().String())
 		return
@@ -189,7 +189,7 @@ func (c Pkg) EntryAction() {
 
 	if id != "" {
 
-		if rs := data.Data.PoGet("p", id); rs.OK() {
+		if rs := data.Data.ProgGet(ipapi.DataPackKey(id)); rs.OK() {
 			rs.Decode(&set.Package)
 		} else if name != "" {
 			// TODO
@@ -319,7 +319,7 @@ func (c Pkg) CommitAction() {
 	//
 	pkg_id := ipapi.PackageMetaId(pack_spec.Name, pack_spec.Version)
 
-	rs := data.Data.PoGet("p", pkg_id)
+	rs := data.Data.ProgGet(ipapi.DataPackKey(pkg_id))
 	if !rs.NotFound() {
 		set.Error = types.NewErrorMeta("400", "Package already exists")
 		return
@@ -399,14 +399,14 @@ func (c Pkg) CommitAction() {
 		pack.Groups.Insert(v)
 	}
 
-	if rs = data.Data.PoPut("p", pkg_id, pack, nil); !rs.OK() {
+	if rs = data.Data.ProgPut(ipapi.DataPackKey(pkg_id), skv.NewProgValue(pack), nil); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Can not write to database")
 		return
 	}
 
 	var prev_info ipapi.PackageInfo
 	name_lower := strings.ToLower(pack_spec.Name)
-	if rs := data.Data.PvGet("info/" + name_lower); rs.NotFound() {
+	if rs := data.Data.ProgGet(ipapi.DataInfoKey(name_lower)); rs.NotFound() {
 
 		prev_info = ipapi.PackageInfo{
 			Meta: types.InnerObjectMeta{
@@ -463,14 +463,14 @@ func (c Pkg) CommitAction() {
 
 	prev_info.Meta.Updated = types.MetaTimeNow()
 
-	if rs := data.Data.PvPut("info/"+name_lower, prev_info, nil); !rs.OK() {
+	if rs := data.Data.ProgPut(ipapi.DataInfoKey(name_lower), skv.NewProgValue(prev_info), nil); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Server Error")
 		return
 	}
 
 	channel.StatNum++
 	channel.StatSize += pack.Size
-	data.Data.PvPut("channel/"+channel.Meta.Name, channel, nil)
+	data.Data.ProgPut(ipapi.DataChannelKey(channel.Meta.Name), skv.NewProgValue(channel), nil)
 
 	set.Kind = "PackageCommit"
 }
@@ -494,7 +494,7 @@ func (c Pkg) SetAction() {
 		return
 	}
 
-	rs := data.Data.PoGet("p", set.Meta.ID)
+	rs := data.Data.ProgGet(ipapi.DataPackKey(set.Meta.ID))
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("400", "No Package Found")
 		return
@@ -519,13 +519,13 @@ func (c Pkg) SetAction() {
 			currChannel ipapi.PackageChannel
 		)
 
-		if rs := data.Data.PvGet("channel/" + set.Channel); !rs.OK() ||
+		if rs := data.Data.ProgGet(ipapi.DataChannelKey(set.Channel)); !rs.OK() ||
 			rs.Decode(&prevChannel) != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error")
 			return
 		}
 
-		if rs := data.Data.PvGet("channel/" + prev.Channel); !rs.OK() ||
+		if rs := data.Data.ProgGet(ipapi.DataChannelKey(prev.Channel)); !rs.OK() ||
 			rs.Decode(&currChannel) != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error")
 			return
@@ -552,10 +552,10 @@ func (c Pkg) SetAction() {
 		prev.Channel = set.Channel
 		prev.Meta.Updated = types.MetaTimeNow()
 
-		data.Data.PvPut("channel/"+currChannel.Meta.Name, currChannel, nil)
-		data.Data.PvPut("channel/"+prevChannel.Meta.Name, prevChannel, nil)
+		data.Data.ProgPut(ipapi.DataChannelKey(currChannel.Meta.Name), skv.NewProgValue(currChannel), nil)
+		data.Data.ProgPut(ipapi.DataChannelKey(prevChannel.Meta.Name), skv.NewProgValue(prevChannel), nil)
 
-		data.Data.PoPut("p", set.Meta.ID, prev, nil)
+		data.Data.ProgPut(ipapi.DataPackKey(set.Meta.ID), skv.NewProgValue(prev), nil)
 	}
 
 	set.Kind = "Package"
@@ -565,7 +565,7 @@ func channelList() []ipapi.PackageChannel {
 
 	sets := []ipapi.PackageChannel{}
 
-	rs := data.Data.PvScan("channel/", "", "", 100)
+	rs := data.Data.ProgScan(ipapi.DataChannelKey(""), ipapi.DataChannelKey(""), 100)
 	if !rs.OK() {
 		return sets
 	}

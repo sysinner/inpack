@@ -40,7 +40,7 @@ func (c Channel) ListAction() {
 	sets := ipapi.PackageChannelList{}
 	defer c.RenderJson(&sets)
 
-	if rs := data.Data.PvScan("channel/", "", "", 100); rs.OK() {
+	if rs := data.Data.ProgScan(ipapi.DataChannelKey(""), ipapi.DataChannelKey(""), 100); rs.OK() {
 
 		rs.KvEach(func(entry *skv.ResultEntry) int {
 
@@ -71,7 +71,7 @@ func (c Channel) EntryAction() {
 		return
 	}
 
-	rs := data.Data.PvGet("channel/" + name)
+	rs := data.Data.ProgGet(ipapi.DataChannelKey(name))
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("404", "Channel Not Found")
 		return
@@ -110,7 +110,7 @@ func (c Channel) SetAction() {
 		return
 	}
 
-	if rs := data.Data.PvGet("channel/" + set.Meta.Name); rs.OK() {
+	if rs := data.Data.ProgGet(ipapi.DataChannelKey(set.Meta.Name)); rs.OK() {
 
 		var prev ipapi.PackageChannel
 
@@ -146,7 +146,7 @@ func (c Channel) SetAction() {
 	set.Meta.Updated = types.MetaTimeNow()
 	set.Kind = ""
 
-	if rs := data.Data.PvPut("channel/"+set.Meta.Name, set, nil); !rs.OK() {
+	if rs := data.Data.ProgPut(ipapi.DataChannelKey(set.Meta.Name), skv.NewProgValue(set), nil); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Can not write to database: "+rs.Bytex().String())
 		return
 	}
@@ -170,7 +170,7 @@ func (c Channel) DeleteAction() {
 		return
 	}
 
-	rs := data.Data.PvGet("channel/" + name)
+	rs := data.Data.ProgGet(ipapi.DataChannelKey(name))
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("404", "Channel Not Found")
 		return
@@ -186,7 +186,7 @@ func (c Channel) DeleteAction() {
 		return
 	}
 
-	if rs := data.Data.PvDel("channel/"+name, nil); !rs.OK() {
+	if rs := data.Data.ProgDel(ipapi.DataChannelKey(name), nil); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Server Error")
 		return
 	}
