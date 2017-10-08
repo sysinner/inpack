@@ -38,7 +38,8 @@ import (
 )
 
 const (
-	pkg_spec_name = ".inpack/inpack.json"
+	pkg_spec_name       = ".inpack/inpack.json"
+	pkg_size_max  int64 = 100 * 1024 * 1024 // 100MB
 )
 
 var (
@@ -102,6 +103,11 @@ func (c Pkg) CommitAction() {
 		return
 	}
 
+	if req.Size > pkg_size_max {
+		set.Error = types.NewErrorMeta("400", fmt.Sprintf("the max size of Package can not more than %d", pkg_size_max))
+		return
+	}
+
 	body64 := strings.SplitAfter(req.Data, ";base64,")
 	if len(body64) != 2 {
 		return
@@ -121,6 +127,7 @@ func (c Pkg) CommitAction() {
 	defer fp.Close()
 
 	fsize := int64(len(filedata))
+
 	fp.Seek(0, 0)
 	fp.Truncate(fsize)
 	if _, err = fp.Write(filedata); err != nil {
@@ -369,6 +376,11 @@ func (c Pkg) MultipartCommitAction() {
 		(channel.Roles == nil || !channel.Roles.Write.MatchAny(aksess.Roles)) {
 		set.Error = types.NewErrorMeta(iamapi.ErrCodeAccessDenied,
 			"AccessDenied to Channel ("+channel.Meta.Name+")")
+		return
+	}
+
+	if req.Size > pkg_size_max {
+		set.Error = types.NewErrorMeta("400", fmt.Sprintf("the max size of Package can not more than %d", pkg_size_max))
 		return
 	}
 
