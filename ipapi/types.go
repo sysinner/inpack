@@ -123,6 +123,16 @@ func (it *PackageVersion) Valid() error {
 	return nil
 }
 
+func (it *PackageVersion) Compare(cp PackageVersion) int {
+	if it.Version == cp.Version &&
+		it.Release == cp.Release &&
+		it.Dist == cp.Dist &&
+		it.Arch == cp.Arch {
+		return 0
+	}
+	return 1
+}
+
 type PackageProject struct {
 	Vendor      string            `json:"vendor,omitempty"` // example.com
 	License     string            `json:"license,omitempty"`
@@ -271,6 +281,17 @@ type PackageCommit struct {
 	SumCheck       string `json:"sumcheck"`
 	AutoRelease    bool   `json:"auto_release"`
 	GitVersion     string `json:"git_version"`
+}
+
+type PackageMultipartCommit struct {
+	types.TypeMeta `json:",inline"`
+	Name           string         `json:"name"`
+	Version        PackageVersion `json:"version"`
+	Channel        string         `json:"channel"`
+	Size           int64          `json:"size"`
+	BlockOffset    int64          `json:"blk_offset"`
+	BlockData      string         `json:"blk_data"`
+	BlockCrc32     uint32         `json:"blk_crc32"`
 }
 
 const (

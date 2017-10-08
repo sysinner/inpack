@@ -17,7 +17,7 @@ package push // import "github.com/sysinner/inpack/internal/cmd/push"
 import (
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"hash/crc32"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -38,6 +38,7 @@ var (
 	cfg           *ini.ConfigIni
 	err           error
 	pkg_spec_name = ".inpack/inpack.json"
+	block_size    = int64(4 * 1024 * 1024)
 )
 
 func Cmd() error {
@@ -56,6 +57,9 @@ func Cmd() error {
 	pack_stat, err := os.Stat(arg_pack_path)
 	if err != nil {
 		return fmt.Errorf("pack_path Not Found")
+	}
+	if pack_stat.Size() < 1 {
+		return fmt.Errorf("pack size empty")
 	}
 	fmt.Printf("\nPUSH %s\n", arg_pack_path)
 
@@ -105,45 +109,68 @@ func Cmd() error {
 	}
 
 	// do commit
-	req := ipapi.PackageCommit{
-		Size:     pack_stat.Size(),
-		Name:     pack_stat.Name(),
-		Data:     "data:inpack/txz;base64,",
-		SumCheck: "sha1:TODO",
-		Channel:  arg_channel,
+	req := ipapi.PackageMultipartCommit{
+		Channel: arg_channel,
+		Name:    pack_stat.Name(),
+		Size:    pack_stat.Size(),
+		Version: pack_spec.Version,
 	}
 
 	fp, err := os.Open(arg_pack_path)
 	if err != nil {
 		return err
 	}
-	bs, err := ioutil.ReadAll(fp)
-	if err != nil {
-		return err
+	defer fp.Close()
+
+	for offset := int64(0); offset < pack_stat.Size(); offset += block_size {
+
+		data_len := block_size
+		if offset+data_len > pack_stat.Size() {
+			data_len = pack_stat.Size() - offset
+		}
+
+		if data_len < 1 {
+			fmt.Println("  Invalid Offset")
+			break
+		}
+
+		buf := make([]byte, int(data_len))
+		fp.ReadAt(buf, offset)
+
+		req.BlockOffset = offset
+		req.BlockCrc32 = crc32.ChecksumIEEE(buf)
+		req.BlockData = "data:inpack/txz;base64," + base64.StdEncoding.EncodeToString(buf)
+
+		hc := httpclient.Put(fmt.Sprintf(
+			"%s/ips/v1/pkg/multipart-commit",
+			cfg.Get("access_key", "service_url").String(),
+		))
+		defer hc.Close()
+
+		js, _ := json.Encode(req, "")
+		hc.Header("Authorization", aka.Encode())
+		hc.Body(js)
+
+		var rsp types.TypeMeta
+		err = hc.ReplyJson(&rsp)
+		if err != nil {
+			fmt.Printf("  %s\n", err.Error())
+			break
+		}
+		if rsp.Error != nil {
+			fmt.Printf("  %s\n", rsp.Error.Message)
+			break
+		}
+
+		if rsp.Kind != "PackageMultipartCommit" {
+			fmt.Println("  Invalid response message")
+			break
+		}
+
+		fmt.Printf("  ok %s %d%%\n",
+			req.Name, int(100*(offset+data_len)/pack_stat.Size()))
 	}
-
-	req.Data += base64.StdEncoding.EncodeToString(bs)
-
-	hc := httpclient.Put(fmt.Sprintf(
-		"%s/ips/v1/pkg/commit",
-		cfg.Get("access_key", "service_url").String(),
-	))
-	defer hc.Close()
-
-	js, _ := json.Encode(req, "")
-	hc.Header("Authorization", aka.Encode())
-	hc.Body(js)
-
-	var rsp types.TypeMeta
-	err = hc.ReplyJson(&rsp)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	if rsp.Error != nil {
-		fmt.Println("err", rsp.Error)
-	}
-	fmt.Println("  ok", rsp.Kind)
+	fmt.Printf("  ok %s\n", req.Name)
 
 	return nil
 }
