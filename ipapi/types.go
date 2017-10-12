@@ -176,6 +176,13 @@ func PackageMetaId(name string, ver PackageVersion) string {
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(strings.ToLower(PackageFilename(name, ver)))))[:16]
 }
 
+func PackageNameValid(name string) error {
+	if !PackageNameRe.MatchString(name) {
+		return errors.New("Invalid Name")
+	}
+	return nil
+}
+
 type Package struct {
 	Meta     types.InnerObjectMeta `json:"meta,omitempty"`
 	Version  PackageVersion        `json:"version,omitempty"`

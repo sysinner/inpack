@@ -406,11 +406,21 @@ func (c Pkg) MultipartCommitAction() {
 	}
 
 	//
+	if err := ipapi.PackageNameValid(req.Name); err != nil {
+		set.Error = types.NewErrorMeta("400", err.Error())
+		return
+	}
+
+	//
 	if err := req.Version.Valid(); err != nil {
 		set.Error = types.NewErrorMeta("400", err.Error())
 		return
 	}
+
+	//
 	pkg_id := ipapi.PackageMetaId(req.Name, req.Version)
+	pkg_name := ipapi.PackageFilename(req.Name, req.Version)
+
 	rs := data.Data.ProgGet(ipapi.DataPackKey(pkg_id))
 	if !rs.NotFound() {
 		set.Error = types.NewErrorMeta("400", "Package already exists")
@@ -421,7 +431,7 @@ func (c Pkg) MultipartCommitAction() {
 	defer mpp_mu.Unlock([]byte(req.Name))
 
 	// Save the file to a temporary directory
-	tmp_file := config.Prefix + "/var/tmp/" + req.Name
+	tmp_file := config.Prefix + "/var/tmp/" + pkg_name + ".txz"
 	if req.BlockOffset == 0 {
 		os.Remove(tmp_file)
 	}
@@ -472,16 +482,15 @@ func (c Pkg) MultipartCommitAction() {
 		return
 	}
 
-	pkg_filename := ipapi.PackageFilename(pack_spec.Name, pack_spec.Version)
-	if !strings.HasPrefix(req.Name, pkg_filename) {
+	if pkg_name != ipapi.PackageFilename(pack_spec.Name, pack_spec.Version) {
 		set.Error = types.NewErrorMeta("400", "Package Name Error")
 		return
 	}
 
 	// TODO  /name/version/*
 	path := fmt.Sprintf(
-		"/%s/%s/%s",
-		pack_spec.Name, pack_spec.Version.Version, req.Name,
+		"/%s/%s/%s.txz",
+		pack_spec.Name, pack_spec.Version.Version, pkg_name,
 	)
 	dir := filepath.Dir(path)
 	if st, err := data.Storage.Stat(dir); os.IsNotExist(err) {
@@ -516,7 +525,7 @@ func (c Pkg) MultipartCommitAction() {
 		return
 	}
 
-	// fp.Seek(0, 0)
+	// fp.Seek(0, 0 +".txz")
 	// if n, err := io.Copy(fop, fp); err != nil {
 	// 	set.Error = types.NewErrorMeta("500", err.Error())
 	// 	return

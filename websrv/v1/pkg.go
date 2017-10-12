@@ -173,7 +173,6 @@ func (c Pkg) EntryAction() {
 			set.Error = types.NewErrorMeta("400", err.Error())
 			return
 		}
-
 		id = ipapi.PackageMetaId(name, version)
 	}
 

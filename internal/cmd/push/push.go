@@ -111,9 +111,9 @@ func Cmd() error {
 	// do commit
 	req := ipapi.PackageMultipartCommit{
 		Channel: arg_channel,
-		Name:    pack_stat.Name(),
-		Size:    pack_stat.Size(),
+		Name:    pack_spec.Name,
 		Version: pack_spec.Version,
+		Size:    pack_stat.Size(),
 	}
 
 	fp, err := os.Open(arg_pack_path)
