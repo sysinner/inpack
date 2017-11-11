@@ -29,7 +29,7 @@ import (
 var (
 	Prefix      string
 	PrefixWebUI string
-	Version     = "0.0.1.dev"
+	Version     = "0.3.0.alpha"
 	Config      ConfigCommon
 	err         error
 )
