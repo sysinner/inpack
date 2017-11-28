@@ -20,10 +20,10 @@ import (
 	"path/filepath"
 
 	"github.com/apcera/termtables"
+	"github.com/hooto/hflag4g/hflag"
 	"github.com/lessos/lessgo/net/httpclient"
 	"github.com/lessos/lessgo/types"
 
-	"github.com/sysinner/inpack/internal/cliflags"
 	"github.com/sysinner/inpack/internal/cmd/auth"
 	"github.com/sysinner/inpack/internal/ini"
 	"github.com/sysinner/inpack/ipapi"
@@ -31,17 +31,22 @@ import (
 
 var (
 	arg_pkgname = ""
+	arg_repo    = "local"
 	cfg         *ini.ConfigIni
 	err         error
 )
 
 func List() error {
 
-	if v, ok := cliflags.Value("name"); ok {
+	if v, ok := hflag.Value("name"); ok {
 		arg_pkgname = filepath.Clean(v.String())
 	}
 	if arg_pkgname == "" {
 		return fmt.Errorf("Package Name Not Found")
+	}
+
+	if v, ok := hflag.Value("repo"); ok {
+		arg_repo = filepath.Clean(v.String())
 	}
 
 	//
@@ -50,14 +55,14 @@ func List() error {
 		return err
 	}
 
-	aka, err := auth.AccessKeyAuth()
+	aka, err := auth.AccessKeyAuth(arg_repo)
 	if err != nil {
 		return err
 	}
 
 	hc := httpclient.Get(fmt.Sprintf(
 		"%s/ips/v1/pkg/list?name=%s",
-		cfg.Get("access_key", "service_url").String(),
+		cfg.Get(arg_repo, "service_url").String(),
 		arg_pkgname,
 	))
 	defer hc.Close()

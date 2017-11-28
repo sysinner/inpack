@@ -39,14 +39,14 @@ func List() error {
 		return err
 	}
 
-	aka, err := auth.AccessKeyAuth()
+	aka, err := auth.AccessKeyAuth(arg_repo)
 	if err != nil {
 		return err
 	}
 
 	hc := httpclient.Get(fmt.Sprintf(
 		"%s/ips/v1/pkg-info/list",
-		cfg.Get("access_key", "service_url").String(),
+		cfg.Get(arg_repo, "service_url").String(),
 	))
 	defer hc.Close()
 

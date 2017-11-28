@@ -23,11 +23,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hooto/hflag4g/hflag"
 	"github.com/lessos/lessgo/encoding/json"
 	"github.com/lessos/lessgo/net/httpclient"
 	"github.com/lessos/lessgo/types"
 
-	"github.com/sysinner/inpack/internal/cliflags"
 	"github.com/sysinner/inpack/internal/cmd/auth"
 	"github.com/sysinner/inpack/ipapi"
 )
@@ -35,21 +35,26 @@ import (
 var (
 	arg_ico_path = ""
 	arg_ico_type = ""
+	arg_repo     = "local"
 	arg_pkgname  = ""
 )
 
 func IcoSet() error {
 
 	//
-	if v, ok := cliflags.Value("name"); ok {
+	if v, ok := hflag.Value("name"); ok {
 		arg_pkgname = filepath.Clean(v.String())
 	}
 	if arg_pkgname == "" {
 		return fmt.Errorf("Package Name Not Found")
 	}
 
+	if v, ok := hflag.Value("repo"); ok {
+		arg_repo = filepath.Clean(v.String())
+	}
+
 	//
-	if v, ok := cliflags.Value("type"); ok {
+	if v, ok := hflag.Value("type"); ok {
 		arg_ico_type = v.String()
 	}
 	if arg_ico_type != "11" && arg_ico_type != "21" {
@@ -57,7 +62,7 @@ func IcoSet() error {
 	}
 
 	//
-	if v, ok := cliflags.Value("ico_path"); ok {
+	if v, ok := hflag.Value("ico_path"); ok {
 		arg_ico_path = filepath.Clean(v.String())
 	}
 	arg_ico_path, _ = filepath.Abs(arg_ico_path)
@@ -95,14 +100,14 @@ func IcoSet() error {
 
 	req.Data += base64.StdEncoding.EncodeToString(bs)
 
-	aka, err := auth.AccessKeyAuth()
+	aka, err := auth.AccessKeyAuth(arg_repo)
 	if err != nil {
 		return err
 	}
 
 	hc := httpclient.Put(fmt.Sprintf(
 		"%s/ips/v1/pkg-info/ico-set",
-		cfg.Get("access_key", "service_url").String(),
+		cfg.Get(arg_repo, "service_url").String(),
 	))
 	defer hc.Close()
 

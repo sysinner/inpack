@@ -22,11 +22,11 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/hooto/hflag4g/hflag"
 	"github.com/lessos/lessgo/encoding/json"
 	"github.com/lessos/lessgo/net/httpclient"
 	"github.com/lessos/lessgo/types"
 
-	"github.com/sysinner/inpack/internal/cliflags"
 	"github.com/sysinner/inpack/internal/cmd/auth"
 	"github.com/sysinner/inpack/internal/ini"
 	"github.com/sysinner/inpack/ipapi"
@@ -34,7 +34,8 @@ import (
 
 var (
 	arg_pack_path = ""
-	arg_channel   = ""
+	arg_channel   = "beta"
+	arg_repo      = "local"
 	cfg           *ini.ConfigIni
 	err           error
 	pkg_spec_name = ".inpack/inpack.json"
@@ -43,14 +44,15 @@ var (
 
 func Cmd() error {
 
-	if v, ok := cliflags.Value("channel"); ok {
+	if v, ok := hflag.Value("channel"); ok {
 		arg_channel = filepath.Clean(v.String())
 	}
-	if arg_channel == "" {
-		return fmt.Errorf("Channel Not Found")
+
+	if v, ok := hflag.Value("repo"); ok {
+		arg_repo = filepath.Clean(v.String())
 	}
 
-	if v, ok := cliflags.Value("pack_path"); ok {
+	if v, ok := hflag.Value("pack_path"); ok {
 		arg_pack_path = filepath.Clean(v.String())
 	}
 	arg_pack_path, _ = filepath.Abs(arg_pack_path)
@@ -81,7 +83,7 @@ func Cmd() error {
 		return err
 	}
 
-	aka, err := auth.AccessKeyAuth()
+	aka, err := auth.AccessKeyAuth(arg_repo)
 	if err != nil {
 		return err
 	}
@@ -89,7 +91,7 @@ func Cmd() error {
 	{
 		url := fmt.Sprintf(
 			"%s/ips/v1/pkg/entry?id=%s",
-			cfg.Get("access_key", "service_url").String(),
+			cfg.Get(arg_repo, "service_url").String(),
 			ipapi.PackageMetaId(pack_spec.Name, pack_spec.Version),
 		)
 
@@ -143,7 +145,7 @@ func Cmd() error {
 
 		hc := httpclient.Put(fmt.Sprintf(
 			"%s/ips/v1/pkg/multipart-commit",
-			cfg.Get("access_key", "service_url").String(),
+			cfg.Get(arg_repo, "service_url").String(),
 		))
 		defer hc.Close()
 

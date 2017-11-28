@@ -59,16 +59,16 @@ func Config() (*ini.ConfigIni, error) {
 	return cfg, nil
 }
 
-func AccessKeyAuth() (iamapi.AccessKeyAuth, error) {
+func AccessKeyAuth(repo string) (iamapi.AccessKeyAuth, error) {
 
 	if cfg == nil {
 		return iamapi.AccessKeyAuth{}, fmt.Errorf("No Config File Found")
 	}
 
 	return iamclient.NewAccessKeyAuth(
-		cfg.Get("access_key", "user").String(),
-		cfg.Get("access_key", "access_key").String(),
-		cfg.Get("access_key", "secret_key").String(),
+		cfg.Get(repo, "user").String(),
+		cfg.Get(repo, "access_key").String(),
+		cfg.Get(repo, "secret_key").String(),
 		"",
 	)
 }

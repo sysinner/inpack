@@ -22,10 +22,10 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/hooto/hflag4g/hflag"
 	"github.com/lessos/lessgo/encoding/json"
 	"github.com/lessos/lessgo/types"
 
-	"github.com/sysinner/inpack/internal/cliflags"
 	"github.com/sysinner/inpack/internal/ini"
 	"github.com/sysinner/inpack/ipapi"
 )
@@ -78,7 +78,7 @@ func Cmd() error {
 		return fmt.Errorf("CPU: amd64 or x86_64 is required")
 	}
 
-	if v, ok := cliflags.Value("pack_dir"); ok {
+	if v, ok := hflag.Value("pack_dir"); ok {
 		pack_dir = filepath.Clean(v.String()) + "/"
 		if _, err := os.Stat(pack_dir); err != nil {
 			return fmt.Errorf("pack_dir Not Found")
@@ -88,7 +88,7 @@ func Cmd() error {
 	}
 	pack_dir, _ = filepath.Abs(pack_dir)
 
-	if v, ok := cliflags.Value("output"); ok {
+	if v, ok := hflag.Value("output"); ok {
 		arg_output_dir, _ = filepath.Abs(v.String())
 		if pack_dir == arg_output_dir || len(arg_output_dir) < 3 {
 			arg_output_dir = ""
@@ -156,7 +156,7 @@ func Cmd() error {
 		}
 	)
 
-	if v, ok := cliflags.Value("spec"); ok {
+	if v, ok := hflag.Value("spec"); ok {
 		spec_files = append([]string{v.String()}, spec_files...)
 	}
 
@@ -171,11 +171,11 @@ func Cmd() error {
 		return fmt.Errorf("No SPEC File Found")
 	}
 
-	if v, ok := cliflags.Value("version"); ok {
+	if v, ok := hflag.Value("version"); ok {
 		cfg.Set("project/version", v.String())
 	}
 
-	if v, ok := cliflags.Value("release"); ok {
+	if v, ok := hflag.Value("release"); ok {
 		cfg.Set("project/release", v.String())
 	} else {
 		cfg.Set("project/release", "1")
@@ -229,7 +229,7 @@ Building
 	)
 
 	//
-	if _, ok := cliflags.Value("build_src"); ok {
+	if _, ok := hflag.Value("build_src"); ok {
 
 		target_name := ipapi.PackageFilename(pkg.Name, pkg.Version)
 
@@ -263,7 +263,7 @@ Building
 		}
 	}
 
-	if v, ok := cliflags.Value("build_dir"); ok && v.String() != "" {
+	if v, ok := hflag.Value("build_dir"); ok && v.String() != "" {
 		build_tempdir = v.String()
 	}
 	build_tempdir, err = filepath.Abs(build_tempdir)
@@ -275,7 +275,7 @@ Building
 	pkg.Version.Dist = dist
 	pkg.Version.Arch = arch
 
-	if _, ok := cliflags.Value("build_nocompress"); !ok {
+	if _, ok := hflag.Value("build_nocompress"); !ok {
 		target_path := ipapi.PackageFilename(pkg.Name, pkg.Version) + ".txz"
 		if arg_output_dir != "" {
 			target_path = arg_output_dir + "/" + target_path
@@ -352,7 +352,7 @@ Building
 		return err
 	}
 
-	if _, ok := cliflags.Value("build_nocompress"); !ok {
+	if _, ok := hflag.Value("build_nocompress"); !ok {
 		target_name := ipapi.PackageFilename(pkg.Name, pkg.Version)
 		if err = _tar_compress(build_tempdir, target_name); err != nil {
 			return err

@@ -56,6 +56,9 @@ func (c Pkg) CommitAction() {
 		set.Error = types.NewErrorMeta("400", err.Error())
 		return
 	}
+	if req.Channel == "" {
+		req.Channel = "beta"
+	}
 
 	//
 	aka, err := iamapi.AccessKeyAuthDecode(c.Session.AuthToken(""))
@@ -331,6 +334,9 @@ func (c Pkg) MultipartCommitAction() {
 	if err := c.Request.JsonDecode(&req); err != nil {
 		set.Error = types.NewErrorMeta("400", err.Error())
 		return
+	}
+	if req.Channel == "" {
+		req.Channel = "beta"
 	}
 
 	//
