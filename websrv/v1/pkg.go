@@ -117,6 +117,10 @@ func (c Pkg) ListAction() {
 				return 0
 			}
 
+			if ipapi.OpPermAllow(set.OpPerm, ipapi.OpPermOff) {
+				return 0
+			}
+
 			if us.IsLogin() && (us.UserName == set.Meta.User || us.UserName == "sysadmin") {
 				set.OpPerm = ipapi.OpPermRead | ipapi.OpPermWrite
 			} else {
@@ -221,7 +225,7 @@ func (c Pkg) SetAction() {
 
 	var prev ipapi.Package
 	if err := rs.Decode(&prev); err != nil {
-		set.Error = types.NewErrorMeta("500", "Server Error")
+		set.Error = types.NewErrorMeta("500", "Server Error 1")
 		return
 	}
 
@@ -231,51 +235,124 @@ func (c Pkg) SetAction() {
 		return
 	}
 
-	if prev.Channel != set.Channel {
+	if ipapi.OpPermAllow(prev.OpPerm, ipapi.OpPermOff) {
+		set.Error = types.NewErrorMeta(iamapi.ErrCodeAccessDenied, "AccessDenied")
+		return
+	}
 
-		var (
-			prevChannel ipapi.PackageChannel
-			currChannel ipapi.PackageChannel
-		)
+	var (
+		setChannel ipapi.PackageChannel
+		preChannel ipapi.PackageChannel
+	)
+
+	if ipapi.OpPermAllow(set.OpPerm, ipapi.OpPermOff) &&
+		!ipapi.OpPermAllow(prev.OpPerm, ipapi.OpPermOff) {
 
 		if rs := data.Data.ProgGet(ipapi.DataChannelKey(set.Channel)); !rs.OK() ||
-			rs.Decode(&prevChannel) != nil {
-			set.Error = types.NewErrorMeta("500", "Server Error")
+			rs.Decode(&setChannel) != nil {
+			set.Error = types.NewErrorMeta("500", "Server Error 2")
+			return
+		}
+
+		prev.OpPerm = prev.OpPerm | ipapi.OpPermOff
+
+		setChannel.StatNumOff++
+		setChannel.StatSizeOff += prev.Size
+
+		if prev.Channel == set.Channel {
+			setChannel.StatNum--
+			setChannel.StatSize -= prev.Size
+		} else {
+
+			if rs := data.Data.ProgGet(ipapi.DataChannelKey(prev.Channel)); !rs.OK() ||
+				rs.Decode(&preChannel) != nil {
+				set.Error = types.NewErrorMeta("500", "Server Error 3")
+				return
+			}
+
+			preChannel.StatNum--
+			preChannel.StatSize -= prev.Size
+
+			prev.Channel = set.Channel
+		}
+
+		var info ipapi.PackageInfo
+		name_lower := strings.ToLower(prev.Meta.Name)
+
+		if rs := data.Data.ProgGet(ipapi.DataInfoKey(name_lower)); !rs.OK() ||
+			rs.Decode(&info) != nil {
+			set.Error = types.NewErrorMeta("500", "Server Error 3.1")
+			return
+		}
+
+		info.StatNum--
+		info.StatSize -= prev.Size
+		if info.StatNum < 0 {
+			info.StatNum = 0
+		}
+		if info.StatSize < 0 {
+			info.StatSize = 0
+		}
+
+		info.StatNumOff++
+		info.StatSizeOff += prev.Size
+
+		if rs := data.Data.ProgPut(ipapi.DataInfoKey(name_lower), skv.NewProgValue(info), nil); !rs.OK() {
+			set.Error = types.NewErrorMeta("500", "Server Error 3.1")
+			return
+		}
+
+	} else if prev.Channel != set.Channel {
+
+		if rs := data.Data.ProgGet(ipapi.DataChannelKey(set.Channel)); !rs.OK() ||
+			rs.Decode(&setChannel) != nil {
+			set.Error = types.NewErrorMeta("500", "Server Error 4")
 			return
 		}
 
 		if rs := data.Data.ProgGet(ipapi.DataChannelKey(prev.Channel)); !rs.OK() ||
-			rs.Decode(&currChannel) != nil {
-			set.Error = types.NewErrorMeta("500", "Server Error")
+			rs.Decode(&preChannel) != nil {
+			set.Error = types.NewErrorMeta("500", "Server Error 5")
 			return
 		}
 
-		currChannel.StatNum--
-		prevChannel.StatNum++
-		if currChannel.StatNum < 0 {
-			currChannel.StatNum = 0
-		}
-		if prevChannel.StatNum < 0 {
-			prevChannel.StatNum = 0
-		}
+		preChannel.StatNum--
+		preChannel.StatSize -= prev.Size
 
-		currChannel.StatSize -= prev.Size
-		prevChannel.StatSize += prev.Size
-		if currChannel.StatSize < 0 {
-			currChannel.StatSize = 0
-		}
-		if prevChannel.StatSize < 0 {
-			prevChannel.StatSize = 0
-		}
+		setChannel.StatNum++
+		setChannel.StatSize += prev.Size
 
 		prev.Channel = set.Channel
-		prev.Meta.Updated = types.MetaTimeNow()
-
-		data.Data.ProgPut(ipapi.DataChannelKey(currChannel.Meta.Name), skv.NewProgValue(currChannel), nil)
-		data.Data.ProgPut(ipapi.DataChannelKey(prevChannel.Meta.Name), skv.NewProgValue(prevChannel), nil)
-
-		data.Data.ProgPut(ipapi.DataPackKey(set.Meta.ID), skv.NewProgValue(prev), nil)
 	}
+
+	if setChannel.Meta.Name != "" {
+
+		if setChannel.StatNum < 0 {
+			setChannel.StatNum = 0
+		}
+
+		if setChannel.StatSize < 0 {
+			setChannel.StatSize = 0
+		}
+
+		data.Data.ProgPut(ipapi.DataChannelKey(setChannel.Meta.Name), skv.NewProgValue(setChannel), nil)
+	}
+
+	if preChannel.Meta.Name != "" {
+
+		if preChannel.StatNum < 0 {
+			preChannel.StatNum = 0
+		}
+
+		if preChannel.StatSize < 0 {
+			preChannel.StatSize = 0
+		}
+
+		data.Data.ProgPut(ipapi.DataChannelKey(preChannel.Meta.Name), skv.NewProgValue(preChannel), nil)
+	}
+
+	prev.Meta.Updated = types.MetaTimeNow()
+	data.Data.ProgPut(ipapi.DataPackKey(set.Meta.ID), skv.NewProgValue(prev), nil)
 
 	set.Kind = "Package"
 }

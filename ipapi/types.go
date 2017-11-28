@@ -222,6 +222,8 @@ type PackageInfo struct {
 	Groups      types.ArrayString     `json:"groups,omitempty"`
 	StatNum     int64                 `json:"stat_num,omitempty"`
 	StatSize    int64                 `json:"stat_size,omitempty"`
+	StatNumOff  int64                 `json:"stat_num_off,omitempty"`
+	StatSizeOff int64                 `json:"stat_size_off,omitempty"`
 	Images      types.ArrayString     `json:"images,omitempty"`
 	OpPerm      uint8                 `json:"op_perm,omitempty"`
 }
@@ -264,7 +266,9 @@ type PackageChannel struct {
 	VendorSite     string                `json:"vendor_site,omitempty"`
 	Upstream       string                `json:"upstream,omitempty"`
 	StatNum        int64                 `json:"stat_num,omitempty"`
+	StatNumOff     int64                 `json:"stat_num_off,omitempty"`
 	StatSize       int64                 `json:"stat_size,omitempty"`
+	StatSizeOff    int64                 `json:"stat_size_off,omitempty"`
 	Roles          *PackageChannelRoles  `json:"roles,omitempty"`
 }
 
@@ -307,9 +311,10 @@ const (
 	OpPermCreate uint8 = 1 << 2
 	OpPermDelete uint8 = 1 << 3
 	OpPermList   uint8 = 1 << 4
-	OpPermPut    uint8 = OpPermWrite | OpPermCreate
+	OpPermOff    uint8 = 1 << 5
+	OpPermPut    uint8 = OpPermWrite | OpPermCreate | OpPermDelete | OpPermOff
 	OpPermMirror uint8 = OpPermRead | OpPermList
-	OpPermAll    uint8 = OpPermRead | OpPermWrite | OpPermCreate | OpPermDelete | OpPermList
+	OpPermAll    uint8 = OpPermRead | OpPermWrite | OpPermCreate | OpPermDelete | OpPermList | OpPermOff
 )
 
 func OpPermAllow(p, perms uint8) bool {
