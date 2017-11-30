@@ -55,10 +55,13 @@ func Cmd() error {
 	if v, ok := hflag.Value("pack_path"); ok {
 		arg_pack_path = filepath.Clean(v.String())
 	}
+	if arg_pack_path == "" {
+		return fmt.Errorf("Package Path (--pack_path) Not Found")
+	}
 	arg_pack_path, _ = filepath.Abs(arg_pack_path)
 	pack_stat, err := os.Stat(arg_pack_path)
-	if err != nil {
-		return fmt.Errorf("pack_path Not Found")
+	if err != nil || pack_stat.IsDir() {
+		return fmt.Errorf("Package Path Not Found (%s)", arg_pack_path)
 	}
 	if pack_stat.Size() < 1 {
 		return fmt.Errorf("pack size empty")
