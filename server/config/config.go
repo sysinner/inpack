@@ -155,7 +155,7 @@ func InitIamAccessKeyData() []iamapi.AccessKey {
 	return []iamapi.AccessKey{
 		{
 			User:      init_sys_user,
-			AccessKey: "00" + idhash.HashToHexString([]byte(Config.InstanceId), 14),
+			AccessKey: Config.InstanceId[:8] + idhash.HashToHexString([]byte(Config.InstanceId), 8),
 			SecretKey: idhash.HashToBase64String(idhash.AlgSha256, []byte(Config.SecretKey), 40),
 			Bounds: []iamapi.AccessKeyBound{{
 				Name: "app/" + Config.InstanceId,
