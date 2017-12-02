@@ -17,6 +17,7 @@ package config // import "github.com/sysinner/inpack/server/config"
 import (
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/hooto/iam/iamapi"
 	"github.com/hooto/iam/iamclient"
@@ -24,14 +25,17 @@ import (
 	"github.com/lessos/lessgo/encoding/json"
 	"github.com/lessos/lessgo/types"
 	"github.com/lynkdb/iomix/connect"
+	iox_utils "github.com/lynkdb/iomix/utils"
 )
 
 var (
-	Prefix      string
-	PrefixWebUI string
-	Version     = "0.3.0.alpha"
-	Config      ConfigCommon
-	err         error
+	Prefix           string
+	PrefixWebUI      string
+	Version          = "0.3.1.alpha"
+	Config           ConfigCommon
+	err              error
+	init_cache_akacc iamapi.AccessKey
+	init_sys_user    = "sysadmin"
 )
 
 type ConfigCommon struct {
@@ -109,7 +113,7 @@ func Init(prefix string) error {
 	}
 
 	if len(Config.InstanceId) < 16 {
-		Config.InstanceId = idhash.RandHexString(16)
+		Config.InstanceId = iox_utils.Uint32ToHexString(uint32(time.Now().Unix())) + idhash.RandHexString(8)
 	}
 
 	if len(Config.SecretKey) < 30 {
@@ -124,11 +128,11 @@ func IamAppInstance() iamapi.AppInstance {
 	return iamapi.AppInstance{
 		Meta: types.InnerObjectMeta{
 			ID:   Config.InstanceId,
-			User: "sysadmin",
+			User: init_sys_user,
 		},
 		Version:  Version,
 		AppID:    "inpack-server",
-		AppTitle: "SysInner Package Server",
+		AppTitle: "inPack Server",
 		Status:   1,
 		Url:      "",
 		Privileges: []iamapi.AppPrivilege{
@@ -139,5 +143,24 @@ func IamAppInstance() iamapi.AppInstance {
 			},
 		},
 		SecretKey: Config.SecretKey,
+	}
+}
+
+func InitIamAccessKeyData() []iamapi.AccessKey {
+
+	if len(Config.InstanceId) < 16 || len(Config.SecretKey) < 32 {
+		return nil
+	}
+
+	return []iamapi.AccessKey{
+		{
+			User:      init_sys_user,
+			AccessKey: "00" + idhash.HashToHexString([]byte(Config.InstanceId), 14),
+			SecretKey: idhash.HashToBase64String(idhash.AlgSha256, []byte(Config.SecretKey), 40),
+			Bounds: []iamapi.AccessKeyBound{{
+				Name: "app/" + Config.InstanceId,
+			}},
+			Description: "inPack Server",
+		},
 	}
 }
