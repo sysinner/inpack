@@ -97,6 +97,11 @@ func Cmd() error {
 		}
 	}
 
+	ext_name := "txz"
+	if v, ok := hflag.Value("compress-name"); ok && v.String() == "gzip" {
+		ext_name = "tgz"
+	}
+
 	dist := ""
 	arch := "x64"
 
@@ -247,7 +252,7 @@ Building
 					return err
 				}
 
-				if err := _tar_compress(build_src_tempdir, target_name); err != nil {
+				if err := _tar_compress(build_src_tempdir, target_name, ext_name); err != nil {
 					return err
 				}
 
@@ -354,7 +359,7 @@ Building
 
 	if _, ok := hflag.Value("build_nocompress"); !ok {
 		target_name := ipapi.PackageFilename(pkg.Name, pkg.Version)
-		if err = _tar_compress(build_tempdir, target_name); err != nil {
+		if err = _tar_compress(build_tempdir, target_name, ext_name); err != nil {
 			return err
 		}
 		if arg_output_dir != "" {
@@ -368,19 +373,31 @@ Building
 	return nil
 }
 
-func _tar_compress(dir, pkg_name string) error {
+func _tar_compress(dir, pkg_name, ext_name string) error {
 
-	tar := `
+	cmd_script := `
 cd ` + dir + `
 tar -cvf ` + pkg_name + `.tar .??* *
+`
+
+	switch ext_name {
+	case "txz":
+		cmd_script += `
 xz -z -e -9 -v ` + pkg_name + `.tar
 mv ` + pkg_name + `.tar.xz ../` + pkg_name + `.txz
 `
-	if err := _cmd(tar); err != nil {
+	case "tgz":
+		cmd_script += `
+gzip -9 ` + pkg_name + `.tar
+mv ` + pkg_name + `.tar.gz ../` + pkg_name + `.tgz
+`
+	}
+
+	if err := _cmd(cmd_script); err != nil {
 		return err
 	}
 
-	fmt.Printf("  OK\n    %s.txz\n\n", pkg_name)
+	fmt.Printf("  OK\n    %s.%s\n\n", pkg_name, ext_name)
 
 	return nil
 }
