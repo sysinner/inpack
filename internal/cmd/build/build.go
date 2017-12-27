@@ -42,7 +42,7 @@ var (
 	arg_output_dir    = ""
 	packed_spec_dir   = ".inpack"
 	packed_spec       = packed_spec_dir + "/inpack.json"
-	jscp              = "uglifyjs %s -c -m -o %s"
+	jscp              = "uglifyjs %s -m -o %s"
 	csscp             = "cleancss --skip-rebase %s -o %s"
 	htmlcp            = "html-minifier -c /tmp/html-minifier.conf %s -o %s"
 	pngcp             = "optipng -o7 %s -out %s"
@@ -238,7 +238,7 @@ Building
 
 		target_name := ipapi.PackageFilename(pkg.Name, pkg.Version)
 
-		target_path := target_name + ".txz"
+		target_path := target_name + "." + ext_name
 		if arg_output_dir != "" {
 			target_path = arg_output_dir + "/" + target_path
 		}
@@ -257,7 +257,7 @@ Building
 				}
 
 				if arg_output_dir != "" {
-					if err = os.Rename(target_name+".txz", arg_output_dir+"/"+target_name+".txz"); err != nil {
+					if err = os.Rename(target_name+"."+ext_name, arg_output_dir+"/"+target_name+"."+ext_name); err != nil {
 						return err
 					}
 				}
@@ -281,7 +281,7 @@ Building
 	pkg.Version.Arch = arch
 
 	if _, ok := hflag.Value("build_nocompress"); !ok {
-		target_path := ipapi.PackageFilename(pkg.Name, pkg.Version) + ".txz"
+		target_path := ipapi.PackageFilename(pkg.Name, pkg.Version) + "." + ext_name
 		if arg_output_dir != "" {
 			target_path = arg_output_dir + "/" + target_path
 		}
@@ -363,7 +363,7 @@ Building
 			return err
 		}
 		if arg_output_dir != "" {
-			if err = os.Rename(target_name+".txz", arg_output_dir+"/"+target_name+".txz"); err != nil {
+			if err = os.Rename(target_name+"."+ext_name, arg_output_dir+"/"+target_name+"."+ext_name); err != nil {
 				return err
 			}
 		}
