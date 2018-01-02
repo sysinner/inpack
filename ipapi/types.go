@@ -233,12 +233,12 @@ type PackageInfoList struct {
 	Items          []PackageInfo `json:"items,omitempty"`
 }
 
-type PackageInfoIco struct {
+type PackageInfoIcon struct {
 	Mime string `json:"mime"`
 	Data string `json:"data"`
 }
 
-type PackageInfoIcoSet struct {
+type PackageInfoIconSet struct {
 	types.TypeMeta `json:",inline"`
 	Name           string `json:"name"`
 	Type           string `json:"type"`

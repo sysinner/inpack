@@ -32,12 +32,12 @@ import (
 )
 
 var (
-	pkg_info_ico21_def = []byte(`<svg width="512" height="256" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink">
+	pkg_info_icon21_def = []byte(`<svg width="512" height="256" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink">
   <path d="M200 30L255.4256258432 62L255.4256258432 126L200 158L144.5743741568 126L144.5743741568 62L200 30Z " fill-opacity="0" fill="#ffffff" stroke-opacity="0.7" stroke="#cccccc" stroke-width="6"></path>
   <path d="M275 137.5L309.641016152 157.5L309.641016152 197.5L275 217.5L240.358983848 197.5L240.358983848 157.5L275 137.5Z " fill-opacity="0" fill="#ffffff" stroke-opacity="0.8" stroke="#cccccc" stroke-width="6"></path>
   <path d="M320 75L347.7128129216 91L347.7128129216 123L320 139L292.2871870784 123L292.2871870784 91L320 75Z " fill-opacity="0" fill="#ffffff" stroke-opacity="0.9" stroke="#cccccc" stroke-width="6"></path>
 </svg>`)
-	pkg_info_ico11_def = []byte(`<svg width="256" height="256" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink">
+	pkg_info_icon11_def = []byte(`<svg width="256" height="256" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink">
   <path d="M128 32 L211.13843876480001 80L211.13843876480001 176L128 224L44.8615612352 176L44.8615612352 80L128 32Z " fill-opacity="0" fill="#ffffff" stroke-opacity="0.7" stroke="#cccccc" stroke-width="10"></path>
 </svg>`)
 )
@@ -54,7 +54,7 @@ func (c PkgInfo) ListAction() {
 	var (
 		q_text  = c.Params.Get("q")
 		q_group = c.Params.Get("group")
-		limit   = 100
+		limit   = 200
 	)
 
 	rs := data.Data.ProgScan(ipapi.DataInfoKey(""), ipapi.DataInfoKey(""), 10000)
@@ -124,14 +124,14 @@ func (c PkgInfo) EntryAction() {
 	set.Kind = "PackageInfo"
 }
 
-func (c PkgInfo) IcoAction() {
+func (c PkgInfo) IconAction() {
 
 	c.AutoRender = false
 
 	var (
-		name     = c.Params.Get("name")
-		ico_type = c.Params.Get("type")
-		ico_size = int(c.Params.Int64("size"))
+		name      = c.Params.Get("name")
+		icon_type = c.Params.Get("type")
+		icon_size = int(c.Params.Int64("size"))
 	)
 
 	if !ipapi.PackageNameRe.MatchString(name) {
@@ -139,29 +139,29 @@ func (c PkgInfo) IcoAction() {
 	}
 	name = strings.ToLower(name)
 
-	if ico_type != "11" && ico_type != "21" {
-		ico_type = "11"
+	if icon_type != "11" && icon_type != "21" {
+		icon_type = "11"
 	}
 
-	if ico_type == "21" && ico_size > 512 {
-		ico_size = 512
-	} else if ico_size > 256 {
-		ico_size = 256
-	} else if ico_size < 64 {
-		ico_size = 64
+	if icon_type == "21" && icon_size > 512 {
+		icon_size = 512
+	} else if icon_size > 256 {
+		icon_size = 256
+	} else if icon_size < 64 {
+		icon_size = 64
 	}
-	ico_size -= (ico_size % 64)
-	ico_sw, ico_sh := ico_size, ico_size
-	if ico_type == "21" {
-		ico_sh = ico_sh / 2
+	icon_size -= (icon_size % 64)
+	icon_sw, icon_sh := icon_size, icon_size
+	if icon_type == "21" {
+		icon_sh = icon_sh / 2
 	}
 
-	var ico ipapi.PackageInfoIco
-	if rs := data.Data.ProgGet(ipapi.DataIconKey(name, ico_type)); rs.OK() {
-		rs.Decode(&ico)
-		if len(ico.Data) > 10 {
+	var icon ipapi.PackageInfoIcon
+	if rs := data.Data.ProgGet(ipapi.DataIconKey(name, icon_type)); rs.OK() {
+		rs.Decode(&icon)
+		if len(icon.Data) > 10 {
 
-			if bs, err := base64.StdEncoding.DecodeString(ico.Data); err == nil {
+			if bs, err := base64.StdEncoding.DecodeString(icon.Data); err == nil {
 
 				//
 				imgsrc, _, err := image.Decode(bytes.NewReader(bs))
@@ -170,11 +170,11 @@ func (c PkgInfo) IcoAction() {
 				}
 
 				var (
-					imgnew = imaging.Thumbnail(imgsrc, ico_sw, ico_sh, imaging.CatmullRom)
+					imgnew = imaging.Thumbnail(imgsrc, icon_sw, icon_sh, imaging.CatmullRom)
 					imgbuf bytes.Buffer
 				)
 				if err = png.Encode(&imgbuf, imgnew); err == nil {
-					c.Response.Out.Header().Set("Content-Type", ico.Mime)
+					c.Response.Out.Header().Set("Content-Type", icon.Mime)
 					c.Response.Out.Write(imgbuf.Bytes())
 					return
 				}
@@ -183,9 +183,9 @@ func (c PkgInfo) IcoAction() {
 	}
 
 	c.Response.Out.Header().Set("Content-Type", "image/svg+xml")
-	if ico_type == "21" {
-		c.Response.Out.Write(pkg_info_ico21_def)
+	if icon_type == "21" {
+		c.Response.Out.Write(pkg_info_icon21_def)
 	} else {
-		c.Response.Out.Write(pkg_info_ico11_def)
+		c.Response.Out.Write(pkg_info_icon11_def)
 	}
 }

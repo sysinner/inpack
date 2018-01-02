@@ -33,10 +33,10 @@ import (
 )
 
 var (
-	arg_ico_path = ""
-	arg_ico_type = ""
-	arg_repo     = "local"
-	arg_pkgname  = ""
+	arg_icon_path = ""
+	arg_icon_type = ""
+	arg_repo      = "local"
+	arg_pkgname   = ""
 )
 
 func IcoSet() error {
@@ -55,22 +55,22 @@ func IcoSet() error {
 
 	//
 	if v, ok := hflag.Value("type"); ok {
-		arg_ico_type = v.String()
+		arg_icon_type = v.String()
 	}
-	if arg_ico_type != "11" && arg_ico_type != "21" {
+	if arg_icon_type != "11" && arg_icon_type != "21" {
 		return fmt.Errorf("Invalid Type Set")
 	}
 
 	//
-	if v, ok := hflag.Value("ico_path"); ok {
-		arg_ico_path = filepath.Clean(v.String())
+	if v, ok := hflag.Value("icon_path"); ok {
+		arg_icon_path = filepath.Clean(v.String())
 	}
-	arg_ico_path, _ = filepath.Abs(arg_ico_path)
-	pack_stat, err := os.Stat(arg_ico_path)
+	arg_icon_path, _ = filepath.Abs(arg_icon_path)
+	pack_stat, err := os.Stat(arg_icon_path)
 	if err != nil {
-		return fmt.Errorf("ico_path Not Found")
+		return fmt.Errorf("icon_path Not Found")
 	}
-	fmt.Printf("ico set %s\n", arg_ico_path)
+	fmt.Printf("icon set %s\n", arg_icon_path)
 
 	//
 	cfg, err := auth.Config()
@@ -79,7 +79,7 @@ func IcoSet() error {
 	}
 
 	req := ipapi.PackageInfoIcoSet{
-		Type: arg_ico_type,
+		Type: arg_icon_type,
 		Size: pack_stat.Size(),
 		Name: arg_pkgname,
 		Data: "",
@@ -89,7 +89,7 @@ func IcoSet() error {
 	mtype := mime.TypeByExtension(ext)
 	req.Data = fmt.Sprintf("data:%s;base64,", mtype)
 
-	fp, err := os.Open(arg_ico_path)
+	fp, err := os.Open(arg_icon_path)
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func IcoSet() error {
 	}
 
 	hc := httpclient.Put(fmt.Sprintf(
-		"%s/ips/v1/pkg-info/ico-set",
+		"%s/ips/v1/pkg-info/icon-set",
 		cfg.Get(arg_repo, "service_url").String(),
 	))
 	defer hc.Close()
