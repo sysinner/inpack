@@ -48,7 +48,7 @@ func main() {
 		}
 
 	case "info-icon-set":
-		if err := cmd_info.IcoSet(); err != nil {
+		if err := cmd_info.IconSet(); err != nil {
 			log.Fatal(err)
 		}
 

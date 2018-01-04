@@ -39,7 +39,7 @@ var (
 	arg_pkgname   = ""
 )
 
-func IcoSet() error {
+func IconSet() error {
 
 	//
 	if v, ok := hflag.Value("name"); ok {
@@ -78,7 +78,7 @@ func IcoSet() error {
 		return err
 	}
 
-	req := ipapi.PackageInfoIcoSet{
+	req := ipapi.PackageInfoIconSet{
 		Type: arg_icon_type,
 		Size: pack_stat.Size(),
 		Name: arg_pkgname,
