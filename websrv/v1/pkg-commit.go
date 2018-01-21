@@ -249,7 +249,7 @@ func (c Pkg) CommitAction() {
 		pack.Groups.Insert(v)
 	}
 
-	if rs = data.Data.ProgPut(ipapi.DataPackKey(pkg_id), skv.NewProgValue(pack), nil); !rs.OK() {
+	if rs = data.Data.ProgPut(ipapi.DataPackKey(pkg_id), skv.NewValueObject(pack), nil); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Can not write to database")
 		return
 	}
@@ -313,14 +313,14 @@ func (c Pkg) CommitAction() {
 
 	prev_info.Meta.Updated = types.MetaTimeNow()
 
-	if rs := data.Data.ProgPut(ipapi.DataInfoKey(name_lower), skv.NewProgValue(prev_info), nil); !rs.OK() {
+	if rs := data.Data.ProgPut(ipapi.DataInfoKey(name_lower), skv.NewValueObject(prev_info), nil); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Server Error")
 		return
 	}
 
 	channel.StatNum++
 	channel.StatSize += pack.Size
-	data.Data.ProgPut(ipapi.DataChannelKey(channel.Meta.Name), skv.NewProgValue(channel), nil)
+	data.Data.ProgPut(ipapi.DataChannelKey(channel.Meta.Name), skv.NewValueObject(channel), nil)
 
 	set.Kind = "PackageCommit"
 }
@@ -561,7 +561,7 @@ func (c Pkg) MultipartCommitAction() {
 		pack.Groups.Insert(v)
 	}
 
-	if rs = data.Data.ProgPut(ipapi.DataPackKey(pkg_id), skv.NewProgValue(pack), nil); !rs.OK() {
+	if rs = data.Data.ProgPut(ipapi.DataPackKey(pkg_id), skv.NewValueObject(pack), nil); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Can not write to database")
 		return
 	}
@@ -625,14 +625,14 @@ func (c Pkg) MultipartCommitAction() {
 
 	prev_info.Meta.Updated = types.MetaTimeNow()
 
-	if rs := data.Data.ProgPut(ipapi.DataInfoKey(name_lower), skv.NewProgValue(prev_info), nil); !rs.OK() {
+	if rs := data.Data.ProgPut(ipapi.DataInfoKey(name_lower), skv.NewValueObject(prev_info), nil); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Server Error")
 		return
 	}
 
 	channel.StatNum++
 	channel.StatSize += pack.Size
-	data.Data.ProgPut(ipapi.DataChannelKey(channel.Meta.Name), skv.NewProgValue(channel), nil)
+	data.Data.ProgPut(ipapi.DataChannelKey(channel.Meta.Name), skv.NewValueObject(channel), nil)
 
 	set.Kind = "PackageMultipartCommit"
 }

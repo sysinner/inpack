@@ -297,7 +297,7 @@ func (c Pkg) SetAction() {
 		info.StatNumOff++
 		info.StatSizeOff += prev.Size
 
-		if rs := data.Data.ProgPut(ipapi.DataInfoKey(name_lower), skv.NewProgValue(info), nil); !rs.OK() {
+		if rs := data.Data.ProgPut(ipapi.DataInfoKey(name_lower), skv.NewValueObject(info), nil); !rs.OK() {
 			set.Error = types.NewErrorMeta("500", "Server Error 3.1")
 			return
 		}
@@ -335,7 +335,7 @@ func (c Pkg) SetAction() {
 			setChannel.StatSize = 0
 		}
 
-		data.Data.ProgPut(ipapi.DataChannelKey(setChannel.Meta.Name), skv.NewProgValue(setChannel), nil)
+		data.Data.ProgPut(ipapi.DataChannelKey(setChannel.Meta.Name), skv.NewValueObject(setChannel), nil)
 	}
 
 	if preChannel.Meta.Name != "" {
@@ -348,11 +348,11 @@ func (c Pkg) SetAction() {
 			preChannel.StatSize = 0
 		}
 
-		data.Data.ProgPut(ipapi.DataChannelKey(preChannel.Meta.Name), skv.NewProgValue(preChannel), nil)
+		data.Data.ProgPut(ipapi.DataChannelKey(preChannel.Meta.Name), skv.NewValueObject(preChannel), nil)
 	}
 
 	prev.Meta.Updated = types.MetaTimeNow()
-	data.Data.ProgPut(ipapi.DataPackKey(set.Meta.ID), skv.NewProgValue(prev), nil)
+	data.Data.ProgPut(ipapi.DataPackKey(set.Meta.ID), skv.NewValueObject(prev), nil)
 
 	set.Kind = "Package"
 }

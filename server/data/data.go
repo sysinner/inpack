@@ -80,7 +80,7 @@ func Init(cfg connect.MultiConnOptions) error {
 		},
 	}
 	for _, v := range def_channels {
-		if rs := Data.ProgNew(ipapi.DataChannelKey(v.Meta.Name), skv.NewProgValue(v), nil); !rs.OK() {
+		if rs := Data.ProgNew(ipapi.DataChannelKey(v.Meta.Name), skv.NewValueObject(v), nil); !rs.OK() {
 			return errors.New(rs.Bytex().String())
 		}
 	}

@@ -167,7 +167,7 @@ func (c PkgInfo) SetAction() {
 		}
 
 		prev.Kind = ""
-		if rs := data.Data.ProgPut(ipapi.DataInfoKey(strings.ToLower(set.Meta.Name)), skv.NewProgValue(prev), nil); !rs.OK() {
+		if rs := data.Data.ProgPut(ipapi.DataInfoKey(strings.ToLower(set.Meta.Name)), skv.NewValueObject(prev), nil); !rs.OK() {
 			set.Error = types.NewErrorMeta("500", "Server Error")
 			return
 		}
@@ -336,11 +336,11 @@ func (c PkgInfo) IconSetAction() {
 		Data: base64.StdEncoding.EncodeToString(imgbuf.Bytes()),
 	}
 
-	if rs := data.Data.ProgPut(ipapi.DataIconKey(strings.ToLower(req.Name), req.Type), skv.NewProgValue(icon), nil); rs.OK() {
+	if rs := data.Data.ProgPut(ipapi.DataIconKey(strings.ToLower(req.Name), req.Type), skv.NewValueObject(icon), nil); rs.OK() {
 		set.Kind = "PackageInfo"
 
 		info.Images.Set(req.Type)
-		data.Data.ProgPut(ipapi.DataInfoKey(req.Name), skv.NewProgValue(info), nil)
+		data.Data.ProgPut(ipapi.DataInfoKey(req.Name), skv.NewValueObject(info), nil)
 
 	} else {
 		set.Error = types.NewErrorMeta(types.ErrCodeServerError, "Error "+rs.Bytex().String())

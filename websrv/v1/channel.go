@@ -146,7 +146,7 @@ func (c Channel) SetAction() {
 	set.Meta.Updated = types.MetaTimeNow()
 	set.Kind = ""
 
-	if rs := data.Data.ProgPut(ipapi.DataChannelKey(set.Meta.Name), skv.NewProgValue(set), nil); !rs.OK() {
+	if rs := data.Data.ProgPut(ipapi.DataChannelKey(set.Meta.Name), skv.NewValueObject(set), nil); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Can not write to database: "+rs.Bytex().String())
 		return
 	}
