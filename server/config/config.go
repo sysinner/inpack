@@ -31,7 +31,7 @@ import (
 var (
 	Prefix           string
 	PrefixWebUI      string
-	Version          = "0.3.1.alpha"
+	Version          = "0.4.0"
 	Config           ConfigCommon
 	err              error
 	init_cache_akacc iamapi.AccessKey
@@ -91,23 +91,27 @@ func Init(prefix string) error {
 
 	for _, opts := range Config.IoConnectors {
 
-		if opts.Name == "inpack_database" &&
-			opts.Connector == "iomix/skv/Connector" {
+		if opts.Name == "inpack_database" {
+			opts.Connector = "iomix/skv/Connector"
 
-			opts.Driver = types.NewNameIdentifier("lynkdb/kvgo")
+			if opts.Driver == "" {
+				opts.Driver = types.NewNameIdentifier("lynkdb/kvgo")
 
-			if v := opts.Value("data_dir"); v == "" {
-				opts.SetValue("data_dir", prefix+"/var/inpack_database")
+				if v := opts.Value("data_dir"); v == "" {
+					opts.SetValue("data_dir", prefix+"/var/inpack_database")
+				}
 			}
 		}
 
-		if opts.Name == "inpack_storage" &&
-			opts.Connector == "iomix/fs/Connector" {
+		if opts.Name == "inpack_storage" {
+			opts.Connector = "iomix/fs/Connector"
 
-			opts.Driver = types.NewNameIdentifier("lynkdb/localfs")
+			if opts.Driver == "" {
+				opts.Driver = types.NewNameIdentifier("lynkdb/localfs")
 
-			if v := opts.Value("data_dir"); v == "" {
-				opts.SetValue("data_dir", prefix+"/var/inpack_storage")
+				if v := opts.Value("data_dir"); v == "" {
+					opts.SetValue("data_dir", prefix+"/var/inpack_storage")
+				}
 			}
 		}
 	}

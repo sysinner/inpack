@@ -163,7 +163,7 @@ func Cmd() error {
 			break
 		}
 		if rsp.Error != nil {
-			fmt.Printf("  %s\n", rsp.Error.Message)
+			fmt.Printf(" ERR %s: %s\n", pack_spec.Name, rsp.Error.Message)
 			break
 		}
 
@@ -175,7 +175,7 @@ func Cmd() error {
 		fmt.Printf("  ok %s %d%%\n",
 			req.Name, int(100*(offset+data_len)/pack_stat.Size()))
 	}
-	fmt.Printf("  ok %s\n", req.Name)
+	// fmt.Printf("  ok %s\n", req.Name)
 
 	return nil
 }

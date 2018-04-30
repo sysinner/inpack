@@ -15,13 +15,11 @@
 package v1 // import "github.com/sysinner/inpack/websrv/v1"
 
 import (
-	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"hash/crc32"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -43,8 +41,16 @@ const (
 )
 
 var (
-	mpp_mu = locker.NewHashPool(runtime.NumCPU())
+	mpp_mu     = locker.NewHashPool(runtime.NumCPU())
+	cmd_shasum = "/usr/bin/sha256sum"
 )
+
+func init() {
+
+	if path, err := exec.LookPath("sha256sum"); err == nil {
+		cmd_shasum = path
+	}
+}
 
 func (c Pkg) CommitAction() {
 
@@ -121,8 +127,10 @@ func (c Pkg) CommitAction() {
 		return
 	}
 
+	tmp_file := config.Prefix + "/var/tmp/" + req.Name
+
 	// Save the file to a temporary directory
-	fp, err := os.OpenFile(config.Prefix+"/var/tmp/"+req.Name, os.O_RDWR|os.O_CREATE, 0755)
+	fp, err := os.OpenFile(tmp_file, os.O_RDWR|os.O_CREATE, 0755)
 	if err != nil {
 		set.Error = types.NewErrorMeta("500", err.Error())
 		return
@@ -143,10 +151,10 @@ func (c Pkg) CommitAction() {
 	}
 
 	// Export package definition information, checking
-	spec, err := exec.Command("/bin/tar", "-Jxvf", config.Prefix+"/var/tmp/"+req.Name, "-O", pkg_spec_name).Output()
+	spec, err := exec.Command("/bin/tar", "-Jxvf", tmp_file, "-O", pkg_spec_name).Output()
 	if err != nil {
 		set.Error = types.NewErrorMeta("400", err.Error())
-		os.Remove(config.Prefix + "/var/tmp/" + req.Name)
+		os.Remove(tmp_file)
 		return
 	}
 
@@ -177,49 +185,51 @@ func (c Pkg) CommitAction() {
 
 	// TODO  /name/version/*
 	path := fmt.Sprintf(
-		"/%s/%s/%s",
+		"/ips/%s/%s/%s",
 		pack_spec.Name, pack_spec.Version.Version, req.Name,
 	)
-	dir := filepath.Dir(path)
-	if st, err := data.Storage.Stat(dir); os.IsNotExist(err) {
+	// dir := filepath.Dir(path)
+	// if st, err := data.Storage.Stat(dir); os.IsNotExist(err) {
 
-		if err = data.Storage.MkdirAll(dir, 0755); err != nil {
-			set.Error = types.NewErrorMeta("500", err.Error())
-			return
-		}
+	// 	if err = data.Storage.MkdirAll(dir, 0755); err != nil {
+	// 		set.Error = types.NewErrorMeta("500", err.Error())
+	// 		return
+	// 	}
 
-		// if err := os.Chmod(dir, 0755); err != nil {
-		//return err
-		// }
+	// 	// if err := os.Chmod(dir, 0755); err != nil {
+	// 	//return err
+	// 	// }
 
-		// exec.Command("/bin/chown", "action:action", dir).Output()
+	// 	// exec.Command("/bin/chown", "action:action", dir).Output()
 
-	} else if !st.IsDir() {
-		set.Error = types.NewErrorMeta("500", "Can not create directory, File exists")
-		return
-	}
+	// } else if !st.IsDir() {
+	// 	set.Error = types.NewErrorMeta("500", "Can not create directory, File exists")
+	// 	return
+	// }
 
-	fop, err := data.Storage.OpenFile(path, os.O_RDWR|os.O_CREATE, 0755)
-	if err != nil {
-		set.Error = types.NewErrorMeta("500", err.Error())
-		return
-	}
-	defer fop.Close()
+	// fop, err := data.Storage.OpenFile(path, os.O_RDWR|os.O_CREATE, 0755)
+	// if err != nil {
+	// 	set.Error = types.NewErrorMeta("500", err.Error())
+	// 	return
+	// }
+	// defer fop.Close()
 
-	if _, err := fop.Write(filedata); err != nil {
-		set.Error = types.NewErrorMeta("500", err.Error())
-		return
-	}
+	// if _, err := fop.Write(filedata); err != nil {
+	// 	set.Error = types.NewErrorMeta("500", err.Error())
+	// 	return
+	// }
 
 	//
 	// exec.Command("/bin/mv", config.Prefix +"/var/tmp/"+req.Name, path).Output()
 	// exec.Command("/bin/chmod", "0644", path).Output()
 	// exec.Command("/bin/chown", "action:action", path).Output()
 
-	filehash := sha256.New()
-	// io.Copy(filehash, fp)
-	filehash.Write(filedata)
-	sum_check := fmt.Sprintf("sha256:%x", filehash.Sum(nil))
+	// filehash := sha256.New()
+	// // io.Copy(filehash, fp)
+	// filehash.Write(filedata)
+	// sum_check := fmt.Sprintf("sha256:%x", filehash.Sum(nil))
+	sum_check := ipm_entry_sync_sumcheck(tmp_file)
+
 	// TODO
 	// if req.SumCheck != sum_check {
 	// 	set.Error = &types.ErrorMeta{
@@ -228,6 +238,11 @@ func (c Pkg) CommitAction() {
 	// 	}
 	// 	return
 	// }
+
+	if rs = data.Storage.OsFilePut(tmp_file, path); !rs.OK() {
+		set.Error = types.NewErrorMeta("500", rs.String())
+		return
+	}
 
 	// package file
 	pack := ipapi.Package{
@@ -495,41 +510,41 @@ func (c Pkg) MultipartCommitAction() {
 
 	// TODO  /name/version/*
 	path := fmt.Sprintf(
-		"/%s/%s/%s.txz",
+		"/ips/%s/%s/%s.txz",
 		pack_spec.Name, pack_spec.Version.Version, pkg_name,
 	)
-	dir := filepath.Dir(path)
-	if st, err := data.Storage.Stat(dir); os.IsNotExist(err) {
+	// dir := filepath.Dir(path)
+	// if st, err := data.Storage.Stat(dir); os.IsNotExist(err) {
 
-		if err = data.Storage.MkdirAll(dir, 0755); err != nil {
-			set.Error = types.NewErrorMeta("500", err.Error())
-			return
-		}
+	// 	if err = data.Storage.MkdirAll(dir, 0755); err != nil {
+	// 		set.Error = types.NewErrorMeta("500", err.Error())
+	// 		return
+	// 	}
 
-	} else if !st.IsDir() {
-		set.Error = types.NewErrorMeta("500", "Can not create directory, File exists")
-		return
-	}
+	// } else if !st.IsDir() {
+	// 	set.Error = types.NewErrorMeta("500", "Can not create directory, File exists")
+	// 	return
+	// }
 
-	fop, err := data.Storage.OpenFile(path, os.O_RDWR|os.O_CREATE, 0755)
-	if err != nil {
-		set.Error = types.NewErrorMeta("500", err.Error())
-		return
-	}
-	defer fop.Close()
-	fop.Seek(0, 0)
-	fop.Truncate(0)
+	// fop, err := data.Storage.OpenFile(path, os.O_RDWR|os.O_CREATE, 0755)
+	// if err != nil {
+	// 	set.Error = types.NewErrorMeta("500", err.Error())
+	// 	return
+	// }
+	// defer fop.Close()
+	// fop.Seek(0, 0)
+	// fop.Truncate(0)
 
-	data_full := make([]byte, int(req.Size))
-	if n, _ := fp.ReadAt(data_full, 0); n != int(req.Size) {
-		set.Error = types.NewErrorMeta("500", "Server Error")
-		return
-	}
+	// data_full := make([]byte, int(req.Size))
+	// if n, _ := fp.ReadAt(data_full, 0); n != int(req.Size) {
+	// 	set.Error = types.NewErrorMeta("500", "Server Error")
+	// 	return
+	// }
 
-	if _, err := fop.Write(data_full); err != nil {
-		set.Error = types.NewErrorMeta("500", "Server Error")
-		return
-	}
+	// if _, err := fop.Write(data_full); err != nil {
+	// 	set.Error = types.NewErrorMeta("500", "Server Error")
+	// 	return
+	// }
 
 	// fp.Seek(0, 0 +".txz")
 	// if n, err := io.Copy(fop, fp); err != nil {
@@ -537,9 +552,15 @@ func (c Pkg) MultipartCommitAction() {
 	// 	return
 	// }
 
-	filehash := sha256.New()
-	filehash.Write(data_full)
-	sum_check := fmt.Sprintf("sha256:%x", filehash.Sum(nil))
+	// filehash := sha256.New()
+	// filehash.Write(data_full)
+	// sum_check := fmt.Sprintf("sha256:%x", filehash.Sum(nil))
+	sum_check := ipm_entry_sync_sumcheck(tmp_file)
+
+	if rs := data.Storage.OsFilePut(tmp_file, path); !rs.OK() {
+		set.Error = types.NewErrorMeta("500", rs.String())
+		return
+	}
 
 	// package file
 	pack := ipapi.Package{
@@ -635,4 +656,19 @@ func (c Pkg) MultipartCommitAction() {
 	data.Data.ProgPut(ipapi.DataChannelKey(channel.Meta.Name), skv.NewValueObject(channel), nil)
 
 	set.Kind = "PackageMultipartCommit"
+}
+
+func ipm_entry_sync_sumcheck(filepath string) string {
+
+	rs, err := exec.Command(cmd_shasum, filepath).Output()
+	if err != nil {
+		return ""
+	}
+
+	rss := strings.Split(string(rs), " ")
+	if len(rss) < 2 {
+		return ""
+	}
+
+	return "sha256:" + rss[0]
 }

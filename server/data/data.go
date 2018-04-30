@@ -12,43 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package data // import "github.com/sysinner/inpack/server/data"
+package data
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/lessos/lessgo/types"
-	"github.com/lynkdb/iomix/connect"
-	"github.com/lynkdb/iomix/fs"
 	"github.com/lynkdb/iomix/skv"
-	"github.com/lynkdb/kvgo"
-	"github.com/lynkdb/localfs"
 
 	"github.com/sysinner/inpack/ipapi"
 )
 
 var (
-	err     error
 	Data    skv.Connector
-	Storage fs.Connector
+	Storage skv.ObjStorConnector
 )
 
-func Init(cfg connect.MultiConnOptions) error {
-
-	//
-	if opts := cfg.Options("inpack_database"); opts == nil {
-		return fmt.Errorf("No IoConnector (%s) Found", "database")
-	} else if Data, err = kvgo.Open(*opts); err != nil {
-		return fmt.Errorf("Can Not Connect To %s, Error: %s", "database", err.Error())
-	}
-
-	//
-	if opts := cfg.Options("inpack_storage"); opts == nil {
-		return fmt.Errorf("Can Not Connect To %s", "storage")
-	} else if Storage, err = localfs.Open(*opts); err != nil {
-		return fmt.Errorf("Can Not Connect To %s, Error: %s", "storage", err.Error())
-	}
+func InitData() error {
 
 	tn := types.MetaTimeNow()
 	def_channels := []ipapi.PackageChannel{

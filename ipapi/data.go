@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	data_base    = "ip"
+	data_prefix  = "ip"
 	data_channel = "ch"
 	data_info    = "if"
 	data_pack    = "p"
@@ -28,20 +28,20 @@ const (
 )
 
 func DataChannelKey(name string) skv.ProgKey {
-	return skv.NewProgKey(data_base, data_channel, name)
+	return skv.NewProgKey(data_prefix, data_channel, name)
 }
 
 func DataInfoKey(name string) skv.ProgKey {
-	return skv.NewProgKey(data_base, data_info, name)
+	return skv.NewProgKey(data_prefix, data_info, name)
 }
 
 func DataPackKey(id string) skv.ProgKey {
 	if id == "" {
-		return skv.NewProgKey(data_base, data_pack, []byte{})
+		return skv.NewProgKey(data_prefix, data_pack, []byte{})
 	}
-	return skv.NewProgKey(data_base, data_pack, utils.HexStringToBytes(id))
+	return skv.NewProgKey(data_prefix, data_pack, utils.HexStringToBytes(id))
 }
 
 func DataIconKey(name, typ string) skv.ProgKey {
-	return skv.NewProgKey(data_base, data_icon, name, typ)
+	return skv.NewProgKey(data_prefix, data_icon, name, typ)
 }
