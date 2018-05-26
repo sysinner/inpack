@@ -162,7 +162,11 @@ func Cmd() error {
 	)
 
 	if v, ok := hflag.Value("spec"); ok {
-		spec_files = append([]string{v.String()}, spec_files...)
+		spec_file := filepath.Clean(v.String())
+		if _, err := os.Stat(spec_file); err != nil {
+			return fmt.Errorf("spec file Not Found %s", spec_file)
+		}
+		spec_files = append([]string{spec_file}, spec_files...)
 	}
 
 	for _, v := range spec_files {
