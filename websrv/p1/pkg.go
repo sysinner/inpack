@@ -86,7 +86,7 @@ func (c Pkg) ListAction() {
 		limit = 200
 	}
 
-	rs := data.Data.ProgScan(ipapi.DataPackKey(""), ipapi.DataPackKey(""), 1000)
+	rs := data.Data.KvProgScan(ipapi.DataPackKey(""), ipapi.DataPackKey(""), 1000)
 	if !rs.OK() {
 		ls.Error = types.NewErrorMeta("500", rs.Bytex().String())
 		return
@@ -172,7 +172,7 @@ func (c Pkg) EntryAction() {
 
 	if id != "" {
 
-		if rs := data.Data.ProgGet(ipapi.DataPackKey(id)); rs.OK() {
+		if rs := data.Data.KvProgGet(ipapi.DataPackKey(id)); rs.OK() {
 			rs.Decode(&set.Package)
 		} else if name != "" {
 			// TODO

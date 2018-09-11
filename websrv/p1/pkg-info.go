@@ -57,7 +57,7 @@ func (c PkgInfo) ListAction() {
 		limit   = 200
 	)
 
-	rs := data.Data.ProgScan(ipapi.DataInfoKey(""), ipapi.DataInfoKey(""), 10000)
+	rs := data.Data.KvProgScan(ipapi.DataInfoKey(""), ipapi.DataInfoKey(""), 10000)
 	if !rs.OK() {
 		sets.Error = types.NewErrorMeta("500", "Server Error")
 		return
@@ -110,7 +110,7 @@ func (c PkgInfo) EntryAction() {
 		return
 	}
 
-	rs := data.Data.ProgGet(ipapi.DataInfoKey(strings.ToLower(name)))
+	rs := data.Data.KvProgGet(ipapi.DataInfoKey(strings.ToLower(name)))
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("404", "PackageInfo Not Found")
 		return
@@ -157,7 +157,7 @@ func (c PkgInfo) IconAction() {
 	}
 
 	var icon ipapi.PackageInfoIcon
-	if rs := data.Data.ProgGet(ipapi.DataIconKey(name, icon_type)); rs.OK() {
+	if rs := data.Data.KvProgGet(ipapi.DataIconKey(name, icon_type)); rs.OK() {
 		rs.Decode(&icon)
 		if len(icon.Data) > 10 {
 

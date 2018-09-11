@@ -27,21 +27,21 @@ const (
 	data_icon    = "ic"
 )
 
-func DataChannelKey(name string) skv.ProgKey {
-	return skv.NewProgKey(data_prefix, data_channel, name)
+func DataChannelKey(name string) skv.KvProgKey {
+	return skv.NewKvProgKey(data_prefix, data_channel, name)
 }
 
-func DataInfoKey(name string) skv.ProgKey {
-	return skv.NewProgKey(data_prefix, data_info, name)
+func DataInfoKey(name string) skv.KvProgKey {
+	return skv.NewKvProgKey(data_prefix, data_info, name)
 }
 
-func DataPackKey(id string) skv.ProgKey {
+func DataPackKey(id string) skv.KvProgKey {
 	if id == "" {
-		return skv.NewProgKey(data_prefix, data_pack, []byte{})
+		return skv.NewKvProgKey(data_prefix, data_pack, []byte{})
 	}
-	return skv.NewProgKey(data_prefix, data_pack, utils.HexStringToBytes(id))
+	return skv.NewKvProgKey(data_prefix, data_pack, utils.HexStringToBytes(id))
 }
 
-func DataIconKey(name, typ string) skv.ProgKey {
-	return skv.NewProgKey(data_prefix, data_icon, name, typ)
+func DataIconKey(name, typ string) skv.KvProgKey {
+	return skv.NewKvProgKey(data_prefix, data_icon, name, typ)
 }

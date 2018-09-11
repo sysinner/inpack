@@ -177,7 +177,7 @@ func (c Pkg) CommitAction() {
 	//
 	pkg_id := ipapi.PackageMetaId(pack_spec.Name, pack_spec.Version)
 
-	rs := data.Data.ProgGet(ipapi.DataPackKey(pkg_id))
+	rs := data.Data.KvProgGet(ipapi.DataPackKey(pkg_id))
 	if !rs.NotFound() {
 		set.Error = types.NewErrorMeta("400", "Package already exists")
 		return
@@ -239,7 +239,7 @@ func (c Pkg) CommitAction() {
 	// 	return
 	// }
 
-	if rs = data.Storage.OsFilePut(tmp_file, path); !rs.OK() {
+	if rs = data.Storage.FoFilePut(tmp_file, path); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", rs.String())
 		return
 	}
@@ -264,14 +264,14 @@ func (c Pkg) CommitAction() {
 		pack.Groups.Insert(v)
 	}
 
-	if rs = data.Data.ProgPut(ipapi.DataPackKey(pkg_id), skv.NewValueObject(pack), nil); !rs.OK() {
+	if rs = data.Data.KvProgPut(ipapi.DataPackKey(pkg_id), skv.NewKvEntry(pack), nil); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Can not write to database")
 		return
 	}
 
 	var prev_info ipapi.PackageInfo
 	name_lower := strings.ToLower(pack_spec.Name)
-	if rs := data.Data.ProgGet(ipapi.DataInfoKey(name_lower)); rs.NotFound() {
+	if rs := data.Data.KvProgGet(ipapi.DataInfoKey(name_lower)); rs.NotFound() {
 
 		prev_info = ipapi.PackageInfo{
 			Meta: types.InnerObjectMeta{
@@ -328,14 +328,14 @@ func (c Pkg) CommitAction() {
 
 	prev_info.Meta.Updated = types.MetaTimeNow()
 
-	if rs := data.Data.ProgPut(ipapi.DataInfoKey(name_lower), skv.NewValueObject(prev_info), nil); !rs.OK() {
+	if rs := data.Data.KvProgPut(ipapi.DataInfoKey(name_lower), skv.NewKvEntry(prev_info), nil); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Server Error")
 		return
 	}
 
 	channel.StatNum++
 	channel.StatSize += pack.Size
-	data.Data.ProgPut(ipapi.DataChannelKey(channel.Meta.Name), skv.NewValueObject(channel), nil)
+	data.Data.KvProgPut(ipapi.DataChannelKey(channel.Meta.Name), skv.NewKvEntry(channel), nil)
 
 	set.Kind = "PackageCommit"
 }
@@ -442,7 +442,7 @@ func (c Pkg) MultipartCommitAction() {
 	pkg_id := ipapi.PackageMetaId(req.Name, req.Version)
 	pkg_name := ipapi.PackageFilename(req.Name, req.Version)
 
-	rs := data.Data.ProgGet(ipapi.DataPackKey(pkg_id))
+	rs := data.Data.KvProgGet(ipapi.DataPackKey(pkg_id))
 	if !rs.NotFound() {
 		set.Error = types.NewErrorMeta("400", "Package already exists")
 		return
@@ -557,7 +557,7 @@ func (c Pkg) MultipartCommitAction() {
 	// sum_check := fmt.Sprintf("sha256:%x", filehash.Sum(nil))
 	sum_check := ipm_entry_sync_sumcheck(tmp_file)
 
-	if rs := data.Storage.OsFilePut(tmp_file, path); !rs.OK() {
+	if rs := data.Storage.FoFilePut(tmp_file, path); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", rs.String())
 		return
 	}
@@ -582,14 +582,14 @@ func (c Pkg) MultipartCommitAction() {
 		pack.Groups.Insert(v)
 	}
 
-	if rs = data.Data.ProgPut(ipapi.DataPackKey(pkg_id), skv.NewValueObject(pack), nil); !rs.OK() {
+	if rs = data.Data.KvProgPut(ipapi.DataPackKey(pkg_id), skv.NewKvEntry(pack), nil); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Can not write to database")
 		return
 	}
 
 	var prev_info ipapi.PackageInfo
 	name_lower := strings.ToLower(pack_spec.Name)
-	if rs := data.Data.ProgGet(ipapi.DataInfoKey(name_lower)); rs.NotFound() {
+	if rs := data.Data.KvProgGet(ipapi.DataInfoKey(name_lower)); rs.NotFound() {
 
 		prev_info = ipapi.PackageInfo{
 			Meta: types.InnerObjectMeta{
@@ -646,14 +646,14 @@ func (c Pkg) MultipartCommitAction() {
 
 	prev_info.Meta.Updated = types.MetaTimeNow()
 
-	if rs := data.Data.ProgPut(ipapi.DataInfoKey(name_lower), skv.NewValueObject(prev_info), nil); !rs.OK() {
+	if rs := data.Data.KvProgPut(ipapi.DataInfoKey(name_lower), skv.NewKvEntry(prev_info), nil); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Server Error")
 		return
 	}
 
 	channel.StatNum++
 	channel.StatSize += pack.Size
-	data.Data.ProgPut(ipapi.DataChannelKey(channel.Meta.Name), skv.NewValueObject(channel), nil)
+	data.Data.KvProgPut(ipapi.DataChannelKey(channel.Meta.Name), skv.NewKvEntry(channel), nil)
 
 	set.Kind = "PackageMultipartCommit"
 }

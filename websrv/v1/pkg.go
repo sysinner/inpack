@@ -65,7 +65,7 @@ func (c Pkg) DlAction() {
 	// )
 
 	// TODO auth
-	fop, err := data.Storage.OsFileOpen("/ips" + file[len("ips/v1/pkg/dl"):])
+	fop, err := data.Storage.FoFileOpen("/ips" + file[len("ips/v1/pkg/dl"):])
 	if err != nil {
 		c.RenderError(404, "File Not Found")
 		return
@@ -100,7 +100,7 @@ func (c Pkg) ListAction() {
 		limit = 200
 	}
 
-	rs := data.Data.ProgScan(ipapi.DataPackKey(""), ipapi.DataPackKey(""), 1000)
+	rs := data.Data.KvProgScan(ipapi.DataPackKey(""), ipapi.DataPackKey(""), 1000)
 	if !rs.OK() {
 		ls.Error = types.NewErrorMeta("500", rs.Bytex().String())
 		return
@@ -194,7 +194,7 @@ func (c Pkg) EntryAction() {
 
 	if id != "" {
 
-		if rs := data.Data.ProgGet(ipapi.DataPackKey(id)); rs.OK() {
+		if rs := data.Data.KvProgGet(ipapi.DataPackKey(id)); rs.OK() {
 			rs.Decode(&set.Package)
 		} else if name != "" {
 			// TODO
@@ -229,7 +229,7 @@ func (c Pkg) SetAction() {
 		return
 	}
 
-	rs := data.Data.ProgGet(ipapi.DataPackKey(set.Meta.ID))
+	rs := data.Data.KvProgGet(ipapi.DataPackKey(set.Meta.ID))
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("400", "No Package Found")
 		return
@@ -260,7 +260,7 @@ func (c Pkg) SetAction() {
 	if ipapi.OpPermAllow(set.OpPerm, ipapi.OpPermOff) &&
 		!ipapi.OpPermAllow(prev.OpPerm, ipapi.OpPermOff) {
 
-		if rs := data.Data.ProgGet(ipapi.DataChannelKey(set.Channel)); !rs.OK() ||
+		if rs := data.Data.KvProgGet(ipapi.DataChannelKey(set.Channel)); !rs.OK() ||
 			rs.Decode(&setChannel) != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error 2")
 			return
@@ -276,7 +276,7 @@ func (c Pkg) SetAction() {
 			setChannel.StatSize -= prev.Size
 		} else {
 
-			if rs := data.Data.ProgGet(ipapi.DataChannelKey(prev.Channel)); !rs.OK() ||
+			if rs := data.Data.KvProgGet(ipapi.DataChannelKey(prev.Channel)); !rs.OK() ||
 				rs.Decode(&preChannel) != nil {
 				set.Error = types.NewErrorMeta("500", "Server Error 3")
 				return
@@ -291,7 +291,7 @@ func (c Pkg) SetAction() {
 		var info ipapi.PackageInfo
 		name_lower := strings.ToLower(prev.Meta.Name)
 
-		if rs := data.Data.ProgGet(ipapi.DataInfoKey(name_lower)); !rs.OK() ||
+		if rs := data.Data.KvProgGet(ipapi.DataInfoKey(name_lower)); !rs.OK() ||
 			rs.Decode(&info) != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error 3.1")
 			return
@@ -309,20 +309,20 @@ func (c Pkg) SetAction() {
 		info.StatNumOff++
 		info.StatSizeOff += prev.Size
 
-		if rs := data.Data.ProgPut(ipapi.DataInfoKey(name_lower), skv.NewValueObject(info), nil); !rs.OK() {
+		if rs := data.Data.KvProgPut(ipapi.DataInfoKey(name_lower), skv.NewKvEntry(info), nil); !rs.OK() {
 			set.Error = types.NewErrorMeta("500", "Server Error 3.1")
 			return
 		}
 
 	} else if prev.Channel != set.Channel {
 
-		if rs := data.Data.ProgGet(ipapi.DataChannelKey(set.Channel)); !rs.OK() ||
+		if rs := data.Data.KvProgGet(ipapi.DataChannelKey(set.Channel)); !rs.OK() ||
 			rs.Decode(&setChannel) != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error 4")
 			return
 		}
 
-		if rs := data.Data.ProgGet(ipapi.DataChannelKey(prev.Channel)); !rs.OK() ||
+		if rs := data.Data.KvProgGet(ipapi.DataChannelKey(prev.Channel)); !rs.OK() ||
 			rs.Decode(&preChannel) != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error 5")
 			return
@@ -347,7 +347,7 @@ func (c Pkg) SetAction() {
 			setChannel.StatSize = 0
 		}
 
-		data.Data.ProgPut(ipapi.DataChannelKey(setChannel.Meta.Name), skv.NewValueObject(setChannel), nil)
+		data.Data.KvProgPut(ipapi.DataChannelKey(setChannel.Meta.Name), skv.NewKvEntry(setChannel), nil)
 	}
 
 	if preChannel.Meta.Name != "" {
@@ -360,11 +360,11 @@ func (c Pkg) SetAction() {
 			preChannel.StatSize = 0
 		}
 
-		data.Data.ProgPut(ipapi.DataChannelKey(preChannel.Meta.Name), skv.NewValueObject(preChannel), nil)
+		data.Data.KvProgPut(ipapi.DataChannelKey(preChannel.Meta.Name), skv.NewKvEntry(preChannel), nil)
 	}
 
 	prev.Meta.Updated = types.MetaTimeNow()
-	data.Data.ProgPut(ipapi.DataPackKey(set.Meta.ID), skv.NewValueObject(prev), nil)
+	data.Data.KvProgPut(ipapi.DataPackKey(set.Meta.ID), skv.NewKvEntry(prev), nil)
 
 	set.Kind = "Package"
 }
@@ -373,7 +373,7 @@ func channelList() []ipapi.PackageChannel {
 
 	sets := []ipapi.PackageChannel{}
 
-	rs := data.Data.ProgScan(ipapi.DataChannelKey(""), ipapi.DataChannelKey(""), 100)
+	rs := data.Data.KvProgScan(ipapi.DataChannelKey(""), ipapi.DataChannelKey(""), 100)
 	if !rs.OK() {
 		return sets
 	}

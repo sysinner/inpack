@@ -25,7 +25,7 @@ import (
 
 var (
 	Data    skv.Connector
-	Storage skv.ObjStorConnector
+	Storage skv.FileObjectConnector
 )
 
 func InitData() error {
@@ -60,7 +60,7 @@ func InitData() error {
 		},
 	}
 	for _, v := range def_channels {
-		if rs := Data.ProgNew(ipapi.DataChannelKey(v.Meta.Name), skv.NewValueObject(v), nil); !rs.OK() {
+		if rs := Data.KvProgNew(ipapi.DataChannelKey(v.Meta.Name), skv.NewKvEntry(v), nil); !rs.OK() {
 			return errors.New(rs.Bytex().String())
 		}
 	}
