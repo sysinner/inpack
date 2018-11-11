@@ -113,7 +113,8 @@ func (c Pkg) CommitAction() {
 	}
 
 	if req.Size > pkg_size_max {
-		set.Error = types.NewErrorMeta("400", fmt.Sprintf("the max size of Package can not more than %d", pkg_size_max))
+		set.Error = types.NewErrorMeta("400",
+			fmt.Sprintf("the max size of Package can not more than %d", pkg_size_max))
 		return
 	}
 
@@ -142,11 +143,7 @@ func (c Pkg) CommitAction() {
 	fp.Seek(0, 0)
 	fp.Truncate(fsize)
 	if _, err = fp.Write(filedata); err != nil {
-		set.Error = types.NewErrorMeta("400", "Package Not Found")
-		set.Error = &types.ErrorMeta{
-			Code:    "500",
-			Message: err.Error(),
-		}
+		set.Error = types.NewErrorMeta("500", err.Error())
 		return
 	}
 
@@ -494,10 +491,12 @@ func (c Pkg) MultipartCommitAction() {
 		set.Error = types.NewErrorMeta("400", err.Error())
 		return
 	}
+
 	if err := pack_spec.Valid(); err != nil {
 		set.Error = types.NewErrorMeta("400", err.Error())
 		return
 	}
+
 	if pack_spec.Version.Compare(req.Version) != 0 {
 		set.Error = types.NewErrorMeta("400", "Invalid Package Version Set")
 		return

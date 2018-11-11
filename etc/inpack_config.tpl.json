@@ -3,14 +3,14 @@
   "io_connects": [
     {
       "name": "inpack_database",
-      "connector": "iomix/skv/Connector",
+      "connector": "iomix/skv/connector",
       "driver": "lynkdb/kvgo"
     },
     {
       "name": "inpack_storage",
-      "connector": "iomix/fs/Connector",
+      "connector": "iomix/fs/connector",
       "driver": "lynkdb/localfs"
     }
   ],
-  "iam_service_url": "https://www.example.com/iam"
+  "iam_service_url": "http://www.example.com/iam"
 }

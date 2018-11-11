@@ -30,10 +30,12 @@ import (
 	"github.com/sysinner/inpack/ipapi"
 )
 
-// yum install npm optipng
-// npm install uglify-js -g
-// npm install clean-css-cli -g
-// npm install html-minifier -g
+// RHEL, CentOS
+//   yum install npm optipng
+// Debian, Ubuntu
+//   sudo apt-get install npm optipng
+//
+// sudo npm install -g uglify-js clean-css-cli html-minifier esformatter
 var (
 	pack_dir          = ""
 	pack_spec         = "inpack.spec"
@@ -466,6 +468,15 @@ func _lookup_files(txt, suffix string) types.ArrayString {
 			continue
 		}
 
+		suffix2 := ""
+
+		if suffix == "" {
+			if n := strings.LastIndex(v, "/*."); n > 0 && (n+3) < len(v) {
+				suffix2 = v[n+3:]
+				v = v[:n]
+			}
+		}
+
 		v = filepath.Clean(v)
 		if _, fname := filepath.Split(v); ignores.Contain(fname) {
 			continue
@@ -490,7 +501,9 @@ func _lookup_files(txt, suffix string) types.ArrayString {
 		}
 
 		var out []byte
-		if suffix != "" {
+		if suffix2 != "" {
+			out, _ = exec.Command("find", v+"/", "-type", "f", "-name", "*"+suffix2).Output()
+		} else if suffix != "" {
 			out, _ = exec.Command("find", v+"/", "-type", "f", "-name", "*"+suffix).Output()
 		} else {
 			out, _ = exec.Command("find", v+"/", "-type", "f").Output()

@@ -78,21 +78,21 @@ func Init(prefix string) error {
 	if opts := Config.IoConnectors.Options("inpack_database"); opts == nil {
 		Config.IoConnectors.SetOptions(connect.ConnOptions{
 			Name:      "inpack_database",
-			Connector: "iomix/skv/Connector",
+			Connector: "iomix/skv/connector",
 		})
 	}
 
 	if opts := Config.IoConnectors.Options("inpack_storage"); opts == nil {
 		Config.IoConnectors.SetOptions(connect.ConnOptions{
 			Name:      "inpack_storage",
-			Connector: "iomix/fs/Connector",
+			Connector: "iomix/fs/connector",
 		})
 	}
 
 	for _, opts := range Config.IoConnectors {
 
 		if opts.Name == "inpack_database" {
-			opts.Connector = "iomix/skv/Connector"
+			opts.Connector = "iomix/skv/connector"
 
 			if opts.Driver == "" {
 				opts.Driver = types.NewNameIdentifier("lynkdb/kvgo")
@@ -104,7 +104,7 @@ func Init(prefix string) error {
 		}
 
 		if opts.Name == "inpack_storage" {
-			opts.Connector = "iomix/fs/Connector"
+			opts.Connector = "iomix/fs/connector"
 
 			if opts.Driver == "" {
 				opts.Driver = types.NewNameIdentifier("lynkdb/localfs")
