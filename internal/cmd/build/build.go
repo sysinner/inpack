@@ -35,7 +35,7 @@ import (
 // Debian, Ubuntu
 //   sudo apt-get install npm optipng
 //
-// sudo npm install -g uglify-js clean-css-cli html-minifier esformatter
+// sudo npm install -g uglify-js clean-css-cli html-minifier esformatter js-beautify
 var (
 	pack_dir          = ""
 	pack_spec         = "inpack.spec"
