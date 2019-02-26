@@ -15,7 +15,6 @@
 package ipapi // import "github.com/sysinner/inpack/ipapi"
 
 import (
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"regexp"
@@ -172,8 +171,8 @@ func PackageFilename(name string, ver PackageVersion) string {
 	)
 }
 
-func PackageMetaId(name string, ver PackageVersion) string {
-	return fmt.Sprintf("%x", sha256.Sum256([]byte(strings.ToLower(PackageFilename(name, ver)))))[:16]
+func PackageFilenameKey(name string, ver PackageVersion) string {
+	return strings.ToLower(PackageFilename(name, ver))
 }
 
 func PackageNameValid(name string) error {

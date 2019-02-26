@@ -38,14 +38,14 @@ var (
 
 func List() error {
 
-	if v, ok := hflag.Value("name"); ok {
+	if v, ok := hflag.ValueOK("name"); ok {
 		arg_pkgname = filepath.Clean(v.String())
 	}
 	if arg_pkgname == "" {
 		return fmt.Errorf("Package Name Not Found")
 	}
 
-	if v, ok := hflag.Value("repo"); ok {
+	if v, ok := hflag.ValueOK("repo"); ok {
 		arg_repo = filepath.Clean(v.String())
 	}
 

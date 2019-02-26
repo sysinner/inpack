@@ -80,7 +80,7 @@ func Cmd() error {
 		return fmt.Errorf("CPU: amd64 or x86_64 is required")
 	}
 
-	if v, ok := hflag.Value("pack_dir"); ok {
+	if v, ok := hflag.ValueOK("pack_dir"); ok {
 		pack_dir = filepath.Clean(v.String()) + "/"
 		if _, err := os.Stat(pack_dir); err != nil {
 			return fmt.Errorf("pack_dir Not Found")
@@ -90,7 +90,7 @@ func Cmd() error {
 	}
 	pack_dir, _ = filepath.Abs(pack_dir)
 
-	if v, ok := hflag.Value("output"); ok {
+	if v, ok := hflag.ValueOK("output"); ok {
 		arg_output_dir, _ = filepath.Abs(v.String())
 		if pack_dir == arg_output_dir || len(arg_output_dir) < 3 {
 			arg_output_dir = ""
@@ -100,7 +100,7 @@ func Cmd() error {
 	}
 
 	ext_name := "txz"
-	if v, ok := hflag.Value("compress-name"); ok && v.String() == "gzip" {
+	if v, ok := hflag.ValueOK("compress-name"); ok && v.String() == "gzip" {
 		ext_name = "tgz"
 	}
 
@@ -163,7 +163,7 @@ func Cmd() error {
 		}
 	)
 
-	if v, ok := hflag.Value("spec"); ok {
+	if v, ok := hflag.ValueOK("spec"); ok {
 		spec_file := filepath.Clean(v.String())
 		if _, err := os.Stat(spec_file); err != nil {
 			return fmt.Errorf("spec file Not Found %s", spec_file)
@@ -182,11 +182,11 @@ func Cmd() error {
 		return fmt.Errorf("No SPEC File Found")
 	}
 
-	if v, ok := hflag.Value("version"); ok {
+	if v, ok := hflag.ValueOK("version"); ok {
 		cfg.Set("project/version", v.String())
 	}
 
-	if v, ok := hflag.Value("release"); ok {
+	if v, ok := hflag.ValueOK("release"); ok {
 		cfg.Set("project/release", v.String())
 	} else {
 		cfg.Set("project/release", "1")
@@ -240,7 +240,7 @@ Building
 	)
 
 	//
-	if _, ok := hflag.Value("build_src"); ok {
+	if _, ok := hflag.ValueOK("build_src"); ok {
 
 		target_name := ipapi.PackageFilename(pkg.Name, pkg.Version)
 
@@ -274,7 +274,7 @@ Building
 		}
 	}
 
-	if v, ok := hflag.Value("build_dir"); ok && v.String() != "" {
+	if v, ok := hflag.ValueOK("build_dir"); ok && v.String() != "" {
 		build_tempdir = v.String()
 	}
 	build_tempdir, err = filepath.Abs(build_tempdir)
@@ -286,7 +286,7 @@ Building
 	pkg.Version.Dist = dist
 	pkg.Version.Arch = arch
 
-	if _, ok := hflag.Value("build_nocompress"); !ok {
+	if _, ok := hflag.ValueOK("build_nocompress"); !ok {
 		target_path := ipapi.PackageFilename(pkg.Name, pkg.Version) + "." + ext_name
 		if arg_output_dir != "" {
 			target_path = arg_output_dir + "/" + target_path
@@ -303,7 +303,7 @@ Building
 	cfg.Params("project__release", string(pkg.Version.Release))
 	cfg.Params("project__dist", dist)
 	cfg.Params("project__arch", arch)
-	cfg.Params("project__prefix", "/home/action/apps/"+pkg.Name)
+	cfg.Params("project__prefix", "/opt/"+pkg.Name)
 
 	os.Mkdir(build_tempdir, 0755)
 
@@ -363,7 +363,7 @@ Building
 		return err
 	}
 
-	if _, ok := hflag.Value("build_nocompress"); !ok {
+	if _, ok := hflag.ValueOK("build_nocompress"); !ok {
 		target_name := ipapi.PackageFilename(pkg.Name, pkg.Version)
 		if err = _tar_compress(build_tempdir, target_name, ext_name); err != nil {
 			return err

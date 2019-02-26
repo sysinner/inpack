@@ -86,7 +86,12 @@ func (c Pkg) ListAction() {
 		limit = 200
 	}
 
-	rs := data.Data.KvProgScan(ipapi.DataPackKey(""), ipapi.DataPackKey(""), 1000)
+	var (
+		offset = ipapi.DataPackKey(q_name)
+		cutset = ipapi.DataPackKey(q_name)
+	)
+
+	rs := data.Data.KvScan(offset, cutset, 1000)
 	if !rs.OK() {
 		ls.Error = types.NewErrorMeta("500", rs.Bytex().String())
 		return
@@ -167,12 +172,12 @@ func (c Pkg) EntryAction() {
 			set.Error = types.NewErrorMeta("400", err.Error())
 			return
 		}
-		id = ipapi.PackageMetaId(name, version)
+		id = ipapi.PackageFilenameKey(name, version)
 	}
 
 	if id != "" {
 
-		if rs := data.Data.KvProgGet(ipapi.DataPackKey(id)); rs.OK() {
+		if rs := data.Data.KvGet(ipapi.DataPackKey(id)); rs.OK() {
 			rs.Decode(&set.Package)
 		} else if name != "" {
 			// TODO

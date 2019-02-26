@@ -15,33 +15,22 @@
 package ipapi // import "github.com/sysinner/inpack/ipapi"
 
 import (
-	"github.com/lynkdb/iomix/skv"
-	"github.com/lynkdb/iomix/utils"
+	"fmt"
+	"strings"
 )
 
-const (
-	data_prefix  = "ip"
-	data_channel = "ch"
-	data_info    = "if"
-	data_pack    = "p"
-	data_icon    = "ic"
-)
-
-func DataChannelKey(name string) skv.KvProgKey {
-	return skv.NewKvProgKey(data_prefix, data_channel, name)
+func DataChannelKey(name string) []byte {
+	return []byte(fmt.Sprintf("ip:ch:%s", strings.ToLower(name)))
 }
 
-func DataInfoKey(name string) skv.KvProgKey {
-	return skv.NewKvProgKey(data_prefix, data_info, name)
+func DataInfoKey(name string) []byte {
+	return []byte(fmt.Sprintf("ip:if:%s", strings.ToLower(name)))
 }
 
-func DataPackKey(id string) skv.KvProgKey {
-	if id == "" {
-		return skv.NewKvProgKey(data_prefix, data_pack, []byte{})
-	}
-	return skv.NewKvProgKey(data_prefix, data_pack, utils.HexStringToBytes(id))
+func DataInfoIconKey(name, typ string) []byte {
+	return []byte(fmt.Sprintf("ip:ific:%s:%s", strings.ToLower(name), typ))
 }
 
-func DataIconKey(name, typ string) skv.KvProgKey {
-	return skv.NewKvProgKey(data_prefix, data_icon, name, typ)
+func DataPackKey(name string) []byte {
+	return []byte(fmt.Sprintf("ip:p:%s", strings.ToLower(name)))
 }

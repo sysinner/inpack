@@ -60,7 +60,7 @@ func (c PkgInfo) ListAction() {
 		limit   = 200
 	)
 
-	rs := data.Data.KvProgScan(ipapi.DataInfoKey(""), ipapi.DataInfoKey(""), 10000)
+	rs := data.Data.KvScan(ipapi.DataInfoKey(""), ipapi.DataInfoKey(""), 10000)
 	if !rs.OK() {
 		sets.Error = types.NewErrorMeta("500", "Server Error")
 		return
@@ -115,7 +115,7 @@ func (c PkgInfo) EntryAction() {
 		return
 	}
 
-	rs := data.Data.KvProgGet(ipapi.DataInfoKey(strings.ToLower(name)))
+	rs := data.Data.KvGet(ipapi.DataInfoKey(name))
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("404", "PackageInfo Not Found")
 		return
@@ -144,7 +144,7 @@ func (c PkgInfo) SetAction() {
 		return
 	}
 
-	if rs := data.Data.KvProgGet(ipapi.DataInfoKey(strings.ToLower(set.Meta.Name))); !rs.OK() {
+	if rs := data.Data.KvGet(ipapi.DataInfoKey(set.Meta.Name)); !rs.OK() {
 		set.Error = types.NewErrorMeta("400", "PackageInfo Not Found")
 		return
 	} else {
@@ -167,7 +167,7 @@ func (c PkgInfo) SetAction() {
 		}
 
 		prev.Kind = ""
-		if rs := data.Data.KvProgPut(ipapi.DataInfoKey(strings.ToLower(set.Meta.Name)), skv.NewKvEntry(prev), nil); !rs.OK() {
+		if rs := data.Data.KvPut(ipapi.DataInfoKey(set.Meta.Name), prev, nil); !rs.OK() {
 			set.Error = types.NewErrorMeta("500", "Server Error")
 			return
 		}
@@ -209,7 +209,7 @@ func (c PkgInfo) IconAction() {
 	}
 
 	var icon ipapi.PackageInfoIcon
-	if rs := data.Data.KvProgGet(ipapi.DataIconKey(name, icon_type)); rs.OK() {
+	if rs := data.Data.KvGet(ipapi.DataInfoIconKey(name, icon_type)); rs.OK() {
 		rs.Decode(&icon)
 		if len(icon.Data) > 10 {
 			bs, err := base64.StdEncoding.DecodeString(icon.Data)
@@ -298,7 +298,7 @@ func (c PkgInfo) IconSetAction() {
 	}
 
 	var info ipapi.PackageInfo
-	if rs := data.Data.KvProgGet(ipapi.DataInfoKey(strings.ToLower(req.Name))); rs.OK() {
+	if rs := data.Data.KvGet(ipapi.DataInfoKey(req.Name)); rs.OK() {
 		rs.Decode(&info)
 	}
 	if info.Meta.Name != req.Name {
@@ -336,11 +336,11 @@ func (c PkgInfo) IconSetAction() {
 		Data: base64.StdEncoding.EncodeToString(imgbuf.Bytes()),
 	}
 
-	if rs := data.Data.KvProgPut(ipapi.DataIconKey(strings.ToLower(req.Name), req.Type), skv.NewKvEntry(icon), nil); rs.OK() {
+	if rs := data.Data.KvPut(ipapi.DataInfoIconKey(req.Name, req.Type), icon, nil); rs.OK() {
 		set.Kind = "PackageInfo"
 
 		info.Images.Set(req.Type)
-		data.Data.KvProgPut(ipapi.DataInfoKey(req.Name), skv.NewKvEntry(info), nil)
+		data.Data.KvPut(ipapi.DataInfoKey(req.Name), info, nil)
 
 	} else {
 		set.Error = types.NewErrorMeta(types.ErrCodeServerError, "Error "+rs.Bytex().String())

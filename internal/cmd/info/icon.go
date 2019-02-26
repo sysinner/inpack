@@ -42,19 +42,19 @@ var (
 func IconSet() error {
 
 	//
-	if v, ok := hflag.Value("name"); ok {
+	if v, ok := hflag.ValueOK("name"); ok {
 		arg_pkgname = filepath.Clean(v.String())
 	}
 	if arg_pkgname == "" {
 		return fmt.Errorf("Package Name Not Found")
 	}
 
-	if v, ok := hflag.Value("repo"); ok {
+	if v, ok := hflag.ValueOK("repo"); ok {
 		arg_repo = filepath.Clean(v.String())
 	}
 
 	//
-	if v, ok := hflag.Value("type"); ok {
+	if v, ok := hflag.ValueOK("type"); ok {
 		arg_icon_type = v.String()
 	}
 	if arg_icon_type != "11" && arg_icon_type != "21" {
@@ -62,7 +62,7 @@ func IconSet() error {
 	}
 
 	//
-	if v, ok := hflag.Value("icon_path"); ok {
+	if v, ok := hflag.ValueOK("icon_path"); ok {
 		arg_icon_path = filepath.Clean(v.String())
 	}
 	arg_icon_path, _ = filepath.Abs(arg_icon_path)

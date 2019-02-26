@@ -56,13 +56,13 @@ func (cfg *ConfigCommon) AccessKeyAuth() (iamapi.AccessKeyAuth, error) {
 	return iamclient.NewAccessKeyAuth("app", cfg.InstanceId, cfg.SecretKey, "")
 }
 
-func Init(prefix string) error {
+func Setup(prefix string) error {
 
 	// var Prefix
 	if prefix == "" {
 
 		if prefix, err = filepath.Abs(filepath.Dir(os.Args[0]) + "/.."); err != nil {
-			prefix = "/home/action/apps/inpack"
+			prefix = "/opt/sysinner/inpack"
 		}
 	}
 
@@ -75,45 +75,43 @@ func Init(prefix string) error {
 	}
 	Config.filepath = file
 
-	if opts := Config.IoConnectors.Options("inpack_database"); opts == nil {
-		Config.IoConnectors.SetOptions(connect.ConnOptions{
-			Name:      "inpack_database",
-			Connector: "iomix/skv/connector",
-		})
-	}
+	for _, opName := range []types.NameIdentifier{
+		"inpack_database",
+		"inpack_storage",
+	} {
 
-	if opts := Config.IoConnectors.Options("inpack_storage"); opts == nil {
-		Config.IoConnectors.SetOptions(connect.ConnOptions{
-			Name:      "inpack_storage",
-			Connector: "iomix/fs/connector",
-		})
-	}
+		opts := Config.IoConnectors.Options(opName)
+		if opts == nil {
+			opts = &connect.ConnOptions{
+				Name: opName,
+			}
+		}
 
-	for _, opts := range Config.IoConnectors {
-
-		if opts.Name == "inpack_database" {
+		switch opName {
+		case "inpack_database":
 			opts.Connector = "iomix/skv/connector"
-
 			if opts.Driver == "" {
 				opts.Driver = types.NewNameIdentifier("lynkdb/kvgo")
-
-				if v := opts.Value("data_dir"); v == "" {
-					opts.SetValue("data_dir", prefix+"/var/inpack_database")
-				}
+				opts.DriverPlugin = types.NewNameIdentifier("lynkdb-kvgo.so")
 			}
-		}
 
-		if opts.Name == "inpack_storage" {
+			if opts.Driver == "lynkdb/kvgo" {
+				opts.SetValue("data_dir", prefix+"/var/"+string(opName))
+			}
+
+		case "inpack_storage":
 			opts.Connector = "iomix/fs/connector"
-
 			if opts.Driver == "" {
 				opts.Driver = types.NewNameIdentifier("lynkdb/localfs")
+				opts.DriverPlugin = types.NewNameIdentifier("lynkdb-localfs.so")
+			}
 
-				if v := opts.Value("data_dir"); v == "" {
-					opts.SetValue("data_dir", prefix+"/var/inpack_storage")
-				}
+			if opts.Driver == "lynkdb/localfs" {
+				opts.SetValue("data_dir", prefix+"/var/"+string(opName))
 			}
 		}
+
+		Config.IoConnectors.SetOptions(*opts)
 	}
 
 	if len(Config.InstanceId) < 16 {

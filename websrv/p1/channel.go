@@ -36,7 +36,7 @@ func (c Channel) ListAction() {
 	sets := ipapi.PackageChannelList{}
 	defer c.RenderJson(&sets)
 
-	if rs := data.Data.KvProgScan(ipapi.DataChannelKey(""), ipapi.DataChannelKey(""), 100); rs.OK() {
+	if rs := data.Data.KvScan(ipapi.DataChannelKey(""), ipapi.DataChannelKey(""), 100); rs.OK() {
 
 		rs.KvEach(func(entry *skv.ResultEntry) int {
 
@@ -66,7 +66,7 @@ func (c Channel) EntryAction() {
 		return
 	}
 
-	rs := data.Data.KvProgGet(ipapi.DataChannelKey(name))
+	rs := data.Data.KvGet(ipapi.DataChannelKey(name))
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("404", "Channel Not Found")
 		return

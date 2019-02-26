@@ -40,7 +40,7 @@ func (c Channel) ListAction() {
 	sets := ipapi.PackageChannelList{}
 	defer c.RenderJson(&sets)
 
-	if rs := data.Data.KvProgScan(ipapi.DataChannelKey(""), ipapi.DataChannelKey(""), 100); rs.OK() {
+	if rs := data.Data.KvScan(ipapi.DataChannelKey(""), ipapi.DataChannelKey(""), 100); rs.OK() {
 
 		rs.KvEach(func(entry *skv.ResultEntry) int {
 
@@ -71,7 +71,7 @@ func (c Channel) EntryAction() {
 		return
 	}
 
-	rs := data.Data.KvProgGet(ipapi.DataChannelKey(name))
+	rs := data.Data.KvGet(ipapi.DataChannelKey(name))
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("404", "Channel Not Found")
 		return
@@ -110,12 +110,12 @@ func (c Channel) SetAction() {
 		return
 	}
 
-	if rs := data.Data.KvProgGet(ipapi.DataChannelKey(set.Meta.Name)); rs.OK() {
+	if rs := data.Data.KvGet(ipapi.DataChannelKey(set.Meta.Name)); rs.OK() {
 
 		var prev ipapi.PackageChannel
 
 		if err := rs.Decode(&prev); err != nil {
-			set.Error = types.NewErrorMeta("500", "Server Error")
+			set.Error = types.NewErrorMeta("500", "Server Error "+err.Error())
 			return
 		}
 
@@ -146,7 +146,7 @@ func (c Channel) SetAction() {
 	set.Meta.Updated = types.MetaTimeNow()
 	set.Kind = ""
 
-	if rs := data.Data.KvProgPut(ipapi.DataChannelKey(set.Meta.Name), skv.NewKvEntry(set), nil); !rs.OK() {
+	if rs := data.Data.KvPut(ipapi.DataChannelKey(set.Meta.Name), set, nil); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Can not write to database: "+rs.Bytex().String())
 		return
 	}
@@ -170,7 +170,7 @@ func (c Channel) DeleteAction() {
 		return
 	}
 
-	rs := data.Data.KvProgGet(ipapi.DataChannelKey(name))
+	rs := data.Data.KvGet(ipapi.DataChannelKey(name))
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("404", "Channel Not Found")
 		return
@@ -186,7 +186,7 @@ func (c Channel) DeleteAction() {
 		return
 	}
 
-	if rs := data.Data.KvProgDel(ipapi.DataChannelKey(name), nil); !rs.OK() {
+	if rs := data.Data.KvDel(ipapi.DataChannelKey(name), nil); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Server Error")
 		return
 	}

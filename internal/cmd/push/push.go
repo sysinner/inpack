@@ -44,15 +44,15 @@ var (
 
 func Cmd() error {
 
-	if v, ok := hflag.Value("channel"); ok {
+	if v, ok := hflag.ValueOK("channel"); ok {
 		arg_channel = filepath.Clean(v.String())
 	}
 
-	if v, ok := hflag.Value("repo"); ok {
+	if v, ok := hflag.ValueOK("repo"); ok {
 		arg_repo = filepath.Clean(v.String())
 	}
 
-	if v, ok := hflag.Value("pack_path"); ok {
+	if v, ok := hflag.ValueOK("pack_path"); ok {
 		arg_pack_path = filepath.Clean(v.String())
 	}
 	if arg_pack_path == "" {
@@ -95,7 +95,7 @@ func Cmd() error {
 		url := fmt.Sprintf(
 			"%s/ips/v1/pkg/entry?id=%s",
 			cfg.Get(arg_repo, "service_url").String(),
-			ipapi.PackageMetaId(pack_spec.Name, pack_spec.Version),
+			ipapi.PackageFilenameKey(pack_spec.Name, pack_spec.Version),
 		)
 
 		hcp := httpclient.Get(url)
