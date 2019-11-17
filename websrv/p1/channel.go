@@ -17,7 +17,6 @@ package p1
 import (
 	"github.com/hooto/httpsrv"
 	"github.com/lessos/lessgo/types"
-	"github.com/lynkdb/iomix/skv"
 
 	"github.com/sysinner/inpack/ipapi"
 	"github.com/sysinner/inpack/server/data"
@@ -36,9 +35,11 @@ func (c Channel) ListAction() {
 	sets := ipapi.PackageChannelList{}
 	defer c.RenderJson(&sets)
 
-	if rs := data.Data.KvScan(ipapi.DataChannelKey(""), ipapi.DataChannelKey(""), 100); rs.OK() {
+	if rs := data.Data.NewReader(nil).KeyRangeSet(
+		ipapi.DataChannelKey(""), ipapi.DataChannelKey("")).
+		LimitNumSet(100).Query(); rs.OK() {
 
-		rs.KvEach(func(entry *skv.ResultEntry) int {
+		for _, entry := range rs.Items {
 
 			var set ipapi.PackageChannel
 			if err := entry.Decode(&set); err == nil {
@@ -47,9 +48,7 @@ func (c Channel) ListAction() {
 					sets.Items = append(sets.Items, set)
 				}
 			}
-
-			return 0
-		})
+		}
 	}
 
 	sets.Kind = "PackageChannelList"
@@ -66,13 +65,10 @@ func (c Channel) EntryAction() {
 		return
 	}
 
-	rs := data.Data.KvGet(ipapi.DataChannelKey(name))
-	if !rs.OK() {
+	if rs := data.Data.NewReader(ipapi.DataChannelKey(name)).Query(); !rs.OK() {
 		set.Error = types.NewErrorMeta("404", "Channel Not Found")
 		return
-	}
-
-	if err := rs.Decode(&set); err != nil {
+	} else if err := rs.Decode(&set); err != nil {
 		set.Error = types.NewErrorMeta("404", "Channel Not Found")
 		return
 	}

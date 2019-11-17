@@ -25,7 +25,6 @@ import (
 	"github.com/hooto/iam/iamapi"
 	"github.com/hooto/iam/iamclient"
 	"github.com/lessos/lessgo/types"
-	"github.com/lynkdb/iomix/skv"
 
 	"github.com/sysinner/inpack/ipapi"
 	"github.com/sysinner/inpack/server/data"
@@ -100,50 +99,50 @@ func (c Pkg) ListAction() {
 		limit = 200
 	}
 
-	rs := data.Data.KvScan(ipapi.DataPackKey(""), ipapi.DataPackKey(""), 1000)
+	rs := data.Data.NewReader(nil).KeyRangeSet(
+		ipapi.DataPackKey(""), ipapi.DataPackKey("")).LimitNumSet(1000).Query()
 	if !rs.OK() {
-		ls.Error = types.NewErrorMeta("500", rs.Bytex().String())
+		ls.Error = types.NewErrorMeta("500", rs.Message)
 		return
 	}
 
 	us, _ := iamclient.SessionInstance(c.Session)
 
-	rs.KvEach(func(entry *skv.ResultEntry) int {
+	for _, entry := range rs.Items {
 
 		if len(ls.Items) >= limit {
 			// TOPO return 0
 		}
 
 		var set ipapi.Package
-		if err := entry.Decode(&set); err == nil {
-
-			if q_name != "" && q_name != set.Meta.Name {
-				return 0
-			}
-
-			if q_channel != "" && q_channel != set.Channel {
-				return 0
-			}
-
-			if q_text != "" && !strings.Contains(set.Meta.Name, q_text) {
-				return 0
-			}
-
-			if ipapi.OpPermAllow(set.OpPerm, ipapi.OpPermOff) {
-				return 0
-			}
-
-			if us.IsLogin() && (us.UserName == set.Meta.User || us.UserName == "sysadmin") {
-				set.OpPerm = ipapi.OpPermRead | ipapi.OpPermWrite
-			} else {
-				set.OpPerm = ipapi.OpPermRead
-			}
-
-			ls.Items = append(ls.Items, set)
+		if err := entry.Decode(&set); err != nil {
+			continue
 		}
 
-		return 0
-	})
+		if q_name != "" && q_name != set.Meta.Name {
+			continue
+		}
+
+		if q_channel != "" && q_channel != set.Channel {
+			continue
+		}
+
+		if q_text != "" && !strings.Contains(set.Meta.Name, q_text) {
+			continue
+		}
+
+		if ipapi.OpPermAllow(set.OpPerm, ipapi.OpPermOff) {
+			continue
+		}
+
+		if us.IsLogin() && (us.UserName == set.Meta.User || us.UserName == "sysadmin") {
+			set.OpPerm = ipapi.OpPermRead | ipapi.OpPermWrite
+		} else {
+			set.OpPerm = ipapi.OpPermRead
+		}
+
+		ls.Items = append(ls.Items, set)
+	}
 
 	sort.Slice(ls.Items, func(i, j int) bool {
 		return ls.Items[i].Meta.Updated > ls.Items[j].Meta.Updated
@@ -194,7 +193,7 @@ func (c Pkg) EntryAction() {
 
 	if id != "" {
 
-		if rs := data.Data.KvGet(ipapi.DataPackKey(id)); rs.OK() {
+		if rs := data.Data.NewReader(ipapi.DataPackKey(id)).Query(); rs.OK() {
 			rs.Decode(&set.Package)
 		} else if name != "" {
 			// TODO
@@ -229,7 +228,7 @@ func (c Pkg) SetAction() {
 		return
 	}
 
-	rs := data.Data.KvGet(ipapi.DataPackKey(set.Meta.ID))
+	rs := data.Data.NewReader(ipapi.DataPackKey(set.Meta.ID)).Query()
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("400", "No Package Found")
 		return
@@ -260,7 +259,7 @@ func (c Pkg) SetAction() {
 	if ipapi.OpPermAllow(set.OpPerm, ipapi.OpPermOff) &&
 		!ipapi.OpPermAllow(prev.OpPerm, ipapi.OpPermOff) {
 
-		if rs := data.Data.KvGet(ipapi.DataChannelKey(set.Channel)); !rs.OK() ||
+		if rs := data.Data.NewReader(ipapi.DataChannelKey(set.Channel)).Query(); !rs.OK() ||
 			rs.Decode(&setChannel) != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error 2")
 			return
@@ -276,7 +275,7 @@ func (c Pkg) SetAction() {
 			setChannel.StatSize -= prev.Size
 		} else {
 
-			if rs := data.Data.KvGet(ipapi.DataChannelKey(prev.Channel)); !rs.OK() ||
+			if rs := data.Data.NewReader(ipapi.DataChannelKey(prev.Channel)).Query(); !rs.OK() ||
 				rs.Decode(&preChannel) != nil {
 				set.Error = types.NewErrorMeta("500", "Server Error 3")
 				return
@@ -291,7 +290,7 @@ func (c Pkg) SetAction() {
 		var info ipapi.PackageInfo
 		name_lower := strings.ToLower(prev.Meta.Name)
 
-		if rs := data.Data.KvGet(ipapi.DataInfoKey(name_lower)); !rs.OK() ||
+		if rs := data.Data.NewReader(ipapi.DataInfoKey(name_lower)).Query(); !rs.OK() ||
 			rs.Decode(&info) != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error 3.1")
 			return
@@ -309,20 +308,20 @@ func (c Pkg) SetAction() {
 		info.StatNumOff++
 		info.StatSizeOff += prev.Size
 
-		if rs := data.Data.KvPut(ipapi.DataInfoKey(name_lower), info, nil); !rs.OK() {
+		if rs := data.Data.NewWriter(ipapi.DataInfoKey(name_lower), info).Commit(); !rs.OK() {
 			set.Error = types.NewErrorMeta("500", "Server Error 3.1")
 			return
 		}
 
 	} else if prev.Channel != set.Channel {
 
-		if rs := data.Data.KvGet(ipapi.DataChannelKey(set.Channel)); !rs.OK() ||
+		if rs := data.Data.NewReader(ipapi.DataChannelKey(set.Channel)).Query(); !rs.OK() ||
 			rs.Decode(&setChannel) != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error 4")
 			return
 		}
 
-		if rs := data.Data.KvGet(ipapi.DataChannelKey(prev.Channel)); !rs.OK() ||
+		if rs := data.Data.NewReader(ipapi.DataChannelKey(prev.Channel)).Query(); !rs.OK() ||
 			rs.Decode(&preChannel) != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error 5")
 			return
@@ -347,7 +346,7 @@ func (c Pkg) SetAction() {
 			setChannel.StatSize = 0
 		}
 
-		data.Data.KvPut(ipapi.DataChannelKey(setChannel.Meta.Name), setChannel, nil)
+		data.Data.NewWriter(ipapi.DataChannelKey(setChannel.Meta.Name), setChannel).Commit()
 	}
 
 	if preChannel.Meta.Name != "" {
@@ -360,11 +359,11 @@ func (c Pkg) SetAction() {
 			preChannel.StatSize = 0
 		}
 
-		data.Data.KvPut(ipapi.DataChannelKey(preChannel.Meta.Name), preChannel, nil)
+		data.Data.NewWriter(ipapi.DataChannelKey(preChannel.Meta.Name), preChannel).Commit()
 	}
 
 	prev.Meta.Updated = types.MetaTimeNow()
-	data.Data.KvPut(ipapi.DataPackKey(set.Meta.ID), prev, nil)
+	data.Data.NewWriter(ipapi.DataPackKey(set.Meta.ID), prev).Commit()
 
 	set.Kind = "Package"
 }
@@ -373,20 +372,18 @@ func channelList() []ipapi.PackageChannel {
 
 	sets := []ipapi.PackageChannel{}
 
-	rs := data.Data.KvScan(ipapi.DataChannelKey(""), ipapi.DataChannelKey(""), 100)
+	rs := data.Data.NewReader(nil).KeyRangeSet(
+		ipapi.DataChannelKey(""), ipapi.DataChannelKey("")).LimitNumSet(100).Query()
 	if !rs.OK() {
 		return sets
 	}
 
-	rs.KvEach(func(entry *skv.ResultEntry) int {
-
+	for _, entry := range rs.Items {
 		var set ipapi.PackageChannel
 		if err := entry.Decode(&set); err == nil {
 			sets = append(sets, set)
 		}
-
-		return 0
-	})
+	}
 
 	return sets
 }

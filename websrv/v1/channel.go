@@ -19,7 +19,6 @@ import (
 	"github.com/hooto/iam/iamapi"
 	"github.com/hooto/iam/iamclient"
 	"github.com/lessos/lessgo/types"
-	"github.com/lynkdb/iomix/skv"
 
 	"github.com/sysinner/inpack/ipapi"
 	"github.com/sysinner/inpack/server/data"
@@ -40,9 +39,10 @@ func (c Channel) ListAction() {
 	sets := ipapi.PackageChannelList{}
 	defer c.RenderJson(&sets)
 
-	if rs := data.Data.KvScan(ipapi.DataChannelKey(""), ipapi.DataChannelKey(""), 100); rs.OK() {
+	if rs := data.Data.NewReader(nil).KeyRangeSet(
+		ipapi.DataChannelKey(""), ipapi.DataChannelKey("")).LimitNumSet(100).Query(); rs.OK() {
 
-		rs.KvEach(func(entry *skv.ResultEntry) int {
+		for _, entry := range rs.Items {
 
 			var set ipapi.PackageChannel
 			if err := entry.Decode(&set); err == nil {
@@ -52,9 +52,7 @@ func (c Channel) ListAction() {
 					sets.Items = append(sets.Items, set)
 				}
 			}
-
-			return 0
-		})
+		}
 	}
 
 	sets.Kind = "PackageChannelList"
@@ -71,7 +69,7 @@ func (c Channel) EntryAction() {
 		return
 	}
 
-	rs := data.Data.KvGet(ipapi.DataChannelKey(name))
+	rs := data.Data.NewReader(ipapi.DataChannelKey(name)).Query()
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("404", "Channel Not Found")
 		return
@@ -110,7 +108,7 @@ func (c Channel) SetAction() {
 		return
 	}
 
-	if rs := data.Data.KvGet(ipapi.DataChannelKey(set.Meta.Name)); rs.OK() {
+	if rs := data.Data.NewReader(ipapi.DataChannelKey(set.Meta.Name)).Query(); rs.OK() {
 
 		var prev ipapi.PackageChannel
 
@@ -146,8 +144,8 @@ func (c Channel) SetAction() {
 	set.Meta.Updated = types.MetaTimeNow()
 	set.Kind = ""
 
-	if rs := data.Data.KvPut(ipapi.DataChannelKey(set.Meta.Name), set, nil); !rs.OK() {
-		set.Error = types.NewErrorMeta("500", "Can not write to database: "+rs.Bytex().String())
+	if rs := data.Data.NewWriter(ipapi.DataChannelKey(set.Meta.Name), set).Commit(); !rs.OK() {
+		set.Error = types.NewErrorMeta("500", "Can not write to database: "+rs.Message)
 		return
 	}
 
@@ -170,7 +168,7 @@ func (c Channel) DeleteAction() {
 		return
 	}
 
-	rs := data.Data.KvGet(ipapi.DataChannelKey(name))
+	rs := data.Data.NewReader(ipapi.DataChannelKey(name)).Query()
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("404", "Channel Not Found")
 		return
@@ -186,7 +184,8 @@ func (c Channel) DeleteAction() {
 		return
 	}
 
-	if rs := data.Data.KvDel(ipapi.DataChannelKey(name), nil); !rs.OK() {
+	if rs := data.Data.NewWriter(ipapi.DataChannelKey(name), nil).
+		ModeDeleteSet(true).Commit(); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Server Error")
 		return
 	}

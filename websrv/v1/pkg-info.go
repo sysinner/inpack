@@ -27,7 +27,6 @@ import (
 	"github.com/hooto/iam/iamapi"
 	"github.com/hooto/iam/iamclient"
 	"github.com/lessos/lessgo/types"
-	"github.com/lynkdb/iomix/skv"
 
 	"github.com/sysinner/inpack/ipapi"
 	"github.com/sysinner/inpack/server/config"
@@ -60,7 +59,8 @@ func (c PkgInfo) ListAction() {
 		limit   = 200
 	)
 
-	rs := data.Data.KvScan(ipapi.DataInfoKey(""), ipapi.DataInfoKey(""), 10000)
+	rs := data.Data.NewReader(nil).KeyRangeSet(
+		ipapi.DataInfoKey(""), ipapi.DataInfoKey("")).LimitNumSet(10000).Query()
 	if !rs.OK() {
 		sets.Error = types.NewErrorMeta("500", "Server Error")
 		return
@@ -68,34 +68,34 @@ func (c PkgInfo) ListAction() {
 
 	us, _ := iamclient.SessionInstance(c.Session)
 
-	rs.KvEach(func(entry *skv.ResultEntry) int {
+	for _, entry := range rs.Items {
 
 		if len(sets.Items) > limit {
-			return -1
+			break
 		}
 
 		var set ipapi.PackageInfo
-		if err := entry.Decode(&set); err == nil {
-
-			if q_text != "" && !strings.Contains(set.Meta.Name, q_text) {
-				return 0
-			}
-
-			if q_group != "" && !set.Groups.Has(q_group) {
-				return 0
-			}
-
-			if us.IsLogin() && (us.UserName == set.Meta.User || us.UserName == "sysadmin") {
-				set.OpPerm = ipapi.OpPermRead | ipapi.OpPermWrite
-			} else {
-				set.OpPerm = ipapi.OpPermRead
-			}
-
-			sets.Items = append(sets.Items, set)
+		if err := entry.Decode(&set); err != nil {
+			continue
 		}
 
-		return 0
-	})
+		if q_text != "" && !strings.Contains(set.Meta.Name, q_text) {
+			continue
+		}
+
+		if q_group != "" && !set.Groups.Has(q_group) {
+			continue
+		}
+
+		if us.IsLogin() && (us.UserName == set.Meta.User || us.UserName == "sysadmin") {
+			set.OpPerm = ipapi.OpPermRead | ipapi.OpPermWrite
+		} else {
+			set.OpPerm = ipapi.OpPermRead
+		}
+
+		sets.Items = append(sets.Items, set)
+
+	}
 
 	sort.Slice(sets.Items, func(i, j int) bool {
 		return sets.Items[i].Meta.Updated > sets.Items[j].Meta.Updated
@@ -115,7 +115,7 @@ func (c PkgInfo) EntryAction() {
 		return
 	}
 
-	rs := data.Data.KvGet(ipapi.DataInfoKey(name))
+	rs := data.Data.NewReader(ipapi.DataInfoKey(name)).Query()
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("404", "PackageInfo Not Found")
 		return
@@ -144,7 +144,7 @@ func (c PkgInfo) SetAction() {
 		return
 	}
 
-	if rs := data.Data.KvGet(ipapi.DataInfoKey(set.Meta.Name)); !rs.OK() {
+	if rs := data.Data.NewReader(ipapi.DataInfoKey(set.Meta.Name)).Query(); !rs.OK() {
 		set.Error = types.NewErrorMeta("400", "PackageInfo Not Found")
 		return
 	} else {
@@ -167,7 +167,7 @@ func (c PkgInfo) SetAction() {
 		}
 
 		prev.Kind = ""
-		if rs := data.Data.KvPut(ipapi.DataInfoKey(set.Meta.Name), prev, nil); !rs.OK() {
+		if rs := data.Data.NewWriter(ipapi.DataInfoKey(set.Meta.Name), prev).Commit(); !rs.OK() {
 			set.Error = types.NewErrorMeta("500", "Server Error")
 			return
 		}
@@ -209,7 +209,7 @@ func (c PkgInfo) IconAction() {
 	}
 
 	var icon ipapi.PackageInfoIcon
-	if rs := data.Data.KvGet(ipapi.DataInfoIconKey(name, icon_type)); rs.OK() {
+	if rs := data.Data.NewReader(ipapi.DataInfoIconKey(name, icon_type)).Query(); rs.OK() {
 		rs.Decode(&icon)
 		if len(icon.Data) > 10 {
 			bs, err := base64.StdEncoding.DecodeString(icon.Data)
@@ -298,7 +298,7 @@ func (c PkgInfo) IconSetAction() {
 	}
 
 	var info ipapi.PackageInfo
-	if rs := data.Data.KvGet(ipapi.DataInfoKey(req.Name)); rs.OK() {
+	if rs := data.Data.NewReader(ipapi.DataInfoKey(req.Name)).Query(); rs.OK() {
 		rs.Decode(&info)
 	}
 	if info.Meta.Name != req.Name {
@@ -336,13 +336,13 @@ func (c PkgInfo) IconSetAction() {
 		Data: base64.StdEncoding.EncodeToString(imgbuf.Bytes()),
 	}
 
-	if rs := data.Data.KvPut(ipapi.DataInfoIconKey(req.Name, req.Type), icon, nil); rs.OK() {
+	if rs := data.Data.NewWriter(ipapi.DataInfoIconKey(req.Name, req.Type), icon).Commit(); rs.OK() {
 		set.Kind = "PackageInfo"
 
 		info.Images.Set(req.Type)
-		data.Data.KvPut(ipapi.DataInfoKey(req.Name), info, nil)
+		data.Data.NewWriter(ipapi.DataInfoKey(req.Name), info).Commit()
 
 	} else {
-		set.Error = types.NewErrorMeta(types.ErrCodeServerError, "Error "+rs.Bytex().String())
+		set.Error = types.NewErrorMeta(types.ErrCodeServerError, "Error "+rs.Message)
 	}
 }

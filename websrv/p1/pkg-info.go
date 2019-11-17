@@ -25,7 +25,6 @@ import (
 	"github.com/eryx/imaging"
 	"github.com/hooto/httpsrv"
 	"github.com/lessos/lessgo/types"
-	"github.com/lynkdb/iomix/skv"
 
 	"github.com/sysinner/inpack/ipapi"
 	"github.com/sysinner/inpack/server/data"
@@ -57,40 +56,39 @@ func (c PkgInfo) ListAction() {
 		limit   = 200
 	)
 
-	rs := data.Data.KvScan(ipapi.DataInfoKey(""), ipapi.DataInfoKey(""), 10000)
+	rs := data.Data.NewReader(nil).KeyRangeSet(
+		ipapi.DataInfoKey(""), ipapi.DataInfoKey("")).LimitNumSet(10000).Query()
 	if !rs.OK() {
 		sets.Error = types.NewErrorMeta("500", "Server Error")
 		return
 	}
-
-	rs.KvEach(func(entry *skv.ResultEntry) int {
+	for _, entry := range rs.Items {
 
 		if len(sets.Items) > limit {
-			return -1
+			break
 		}
 
 		var set ipapi.PackageInfo
-		if err := entry.Decode(&set); err == nil {
-
-			if q_text != "" && !strings.Contains(set.Meta.Name, q_text) {
-				return 0
-			}
-
-			if q_group != "" && !set.Groups.Has(q_group) {
-				return 0
-			}
-
-			sets.Items = append(sets.Items, ipapi.PackageInfo{
-				Meta: types.InnerObjectMeta{
-					Name:    set.Meta.Name,
-					Updated: set.Meta.Updated,
-				},
-				LastVersion: set.LastVersion,
-			})
+		if err := entry.Decode(&set); err != nil {
+			continue
 		}
 
-		return 0
-	})
+		if q_text != "" && !strings.Contains(set.Meta.Name, q_text) {
+			continue
+		}
+
+		if q_group != "" && !set.Groups.Has(q_group) {
+			continue
+		}
+
+		sets.Items = append(sets.Items, ipapi.PackageInfo{
+			Meta: types.InnerObjectMeta{
+				Name:    set.Meta.Name,
+				Updated: set.Meta.Updated,
+			},
+			LastVersion: set.LastVersion,
+		})
+	}
 
 	sort.Slice(sets.Items, func(i, j int) bool {
 		return sets.Items[i].Meta.Updated > sets.Items[j].Meta.Updated
@@ -110,7 +108,7 @@ func (c PkgInfo) EntryAction() {
 		return
 	}
 
-	rs := data.Data.KvGet(ipapi.DataInfoKey(name))
+	rs := data.Data.NewReader(ipapi.DataInfoKey(name)).Query()
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("404", "PackageInfo Not Found")
 		return
@@ -157,7 +155,7 @@ func (c PkgInfo) IconAction() {
 	}
 
 	var icon ipapi.PackageInfoIcon
-	if rs := data.Data.KvGet(ipapi.DataInfoIconKey(name, icon_type)); rs.OK() {
+	if rs := data.Data.NewReader(ipapi.DataInfoIconKey(name, icon_type)).Query(); rs.OK() {
 		rs.Decode(&icon)
 		if len(icon.Data) > 10 {
 

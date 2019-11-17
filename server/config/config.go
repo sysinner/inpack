@@ -31,7 +31,7 @@ import (
 var (
 	Prefix           string
 	PrefixWebUI      string
-	Version          = "0.4.0"
+	Version          = "0.9.0"
 	Config           ConfigCommon
 	err              error
 	init_cache_akacc iamapi.AccessKey
@@ -40,12 +40,12 @@ var (
 
 type ConfigCommon struct {
 	filepath      string
-	InstanceId    string                   `json:"instance_id"`
-	SecretKey     string                   `json:"secret_key"`
-	HttpPort      uint16                   `json:"http_port,omitempty"`
-	IoConnectors  connect.MultiConnOptions `json:"io_connects"`
-	IamServiceUrl string                   `json:"iam_service_url,omitempty"`
-	PprofHttpPort uint16                   `json:"pprof_http_port,omitempty"`
+	InstanceId    string              `json:"instance_id"`
+	SecretKey     string              `json:"secret_key"`
+	HttpPort      uint16              `json:"http_port,omitempty"`
+	DataConnect   connect.ConnOptions `json:"data_connect"`
+	IamServiceUrl string              `json:"iam_service_url,omitempty"`
+	PprofHttpPort uint16              `json:"pprof_http_port,omitempty"`
 }
 
 func (cfg *ConfigCommon) Sync() error {
@@ -75,43 +75,13 @@ func Setup(prefix string) error {
 	}
 	Config.filepath = file
 
-	for _, opName := range []types.NameIdentifier{
-		"inpack_database",
-		"inpack_storage",
-	} {
-
-		opts := Config.IoConnectors.Options(opName)
-		if opts == nil {
-			opts = &connect.ConnOptions{
-				Name: opName,
-			}
-		}
-
-		switch opName {
-		case "inpack_database":
-			opts.Connector = "iomix/skv/connector"
-			if opts.Driver == "" {
-				opts.Driver = types.NewNameIdentifier("lynkdb/kvgo")
-				opts.DriverPlugin = types.NewNameIdentifier("lynkdb-kvgo.so")
-			}
-
-			if opts.Driver == "lynkdb/kvgo" {
-				opts.SetValue("data_dir", prefix+"/var/"+string(opName))
-			}
-
-		case "inpack_storage":
-			opts.Connector = "iomix/fs/connector"
-			if opts.Driver == "" {
-				opts.Driver = types.NewNameIdentifier("lynkdb/localfs")
-				opts.DriverPlugin = types.NewNameIdentifier("lynkdb-localfs.so")
-			}
-
-			if opts.Driver == "lynkdb/localfs" {
-				opts.SetValue("data_dir", prefix+"/var/"+string(opName))
-			}
-		}
-
-		Config.IoConnectors.SetOptions(*opts)
+	if Config.DataConnect.Connector == "" {
+		Config.DataConnect.Connector = "iomix/sko/client-connector"
+		Config.DataConnect.Driver = types.NewNameIdentifier("lynkdb/kvgo")
+		Config.DataConnect.SetValue("data_dir", Prefix+"/var/db_inpack")
+		Config.DataConnect.SetValue("lynkdb/sskv/compaction_table_size", "16")
+		Config.DataConnect.SetValue("lynkdb/sskv/write_buffer", "8")
+		Config.DataConnect.SetValue("lynkdb/sskv/cache_capacity", "32")
 	}
 
 	if len(Config.InstanceId) < 16 {

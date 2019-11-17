@@ -22,7 +22,6 @@ import (
 
 	"github.com/hooto/httpsrv"
 	"github.com/lessos/lessgo/types"
-	"github.com/lynkdb/iomix/skv"
 
 	"github.com/sysinner/inpack/ipapi"
 	"github.com/sysinner/inpack/server/config"
@@ -45,12 +44,7 @@ func (c Pkg) DlAction() {
 	}
 
 	// TODO auth
-	opts := config.Config.IoConnectors.Options("inpack_storage")
-	if opts == nil {
-		c.RenderError(400, "Bad Request")
-		return
-	}
-	fs_dir := opts.Value("data_dir")
+	fs_dir := config.Config.StorageConnect.Value("data_dir")
 	if fs_dir == "" {
 		c.RenderError(400, "Bad Request")
 		return
@@ -91,42 +85,41 @@ func (c Pkg) ListAction() {
 		cutset = ipapi.DataPackKey(q_name)
 	)
 
-	rs := data.Data.KvScan(offset, cutset, 1000)
+	rs := data.Data.NewReader(nil).KeyRangeSet(offset, cutset).LimitNumSet(1000).Query()
 	if !rs.OK() {
-		ls.Error = types.NewErrorMeta("500", rs.Bytex().String())
+		ls.Error = types.NewErrorMeta("500", rs.Message)
 		return
 	}
 
-	rs.KvEach(func(entry *skv.ResultEntry) int {
+	for _, entry := range rs.Items {
 
 		if len(ls.Items) >= limit {
 			// TOPO return 0
 		}
 
 		var set ipapi.Package
-		if err := entry.Decode(&set); err == nil {
-
-			if q_name != "" && q_name != set.Meta.Name {
-				return 0
-			}
-
-			if q_channel != "" && q_channel != set.Channel {
-				return 0
-			}
-
-			if q_text != "" && !strings.Contains(set.Meta.Name, q_text) {
-				return 0
-			}
-
-			if ipapi.OpPermAllow(set.OpPerm, ipapi.OpPermOff) {
-				return 0
-			}
-
-			ls.Items = append(ls.Items, set)
+		if err := entry.Decode(&set); err != nil {
+			continue
 		}
 
-		return 0
-	})
+		if q_name != "" && q_name != set.Meta.Name {
+			continue
+		}
+
+		if q_channel != "" && q_channel != set.Channel {
+			continue
+		}
+
+		if q_text != "" && !strings.Contains(set.Meta.Name, q_text) {
+			continue
+		}
+
+		if ipapi.OpPermAllow(set.OpPerm, ipapi.OpPermOff) {
+			continue
+		}
+
+		ls.Items = append(ls.Items, set)
+	}
 
 	sort.Slice(ls.Items, func(i, j int) bool {
 		return ls.Items[i].Meta.Updated > ls.Items[j].Meta.Updated
@@ -177,7 +170,7 @@ func (c Pkg) EntryAction() {
 
 	if id != "" {
 
-		if rs := data.Data.KvGet(ipapi.DataPackKey(id)); rs.OK() {
+		if rs := data.Data.NewReader(ipapi.DataPackKey(id)).Query(); rs.OK() {
 			rs.Decode(&set.Package)
 		} else if name != "" {
 			// TODO
