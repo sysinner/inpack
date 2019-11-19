@@ -45,24 +45,6 @@ func (c Pkg) DlAction() {
 		return
 	}
 
-	// // TODO auth
-	// opts := config.Config.IoConnectors.Options("inpack_storage")
-	// if opts == nil {
-	// 	c.RenderError(400, "Bad Request")
-	// 	return
-	// }
-	// fs_dir := opts.Value("data_dir")
-	// if fs_dir == "" {
-	// 	c.RenderError(400, "Bad Request")
-	// 	return
-	// }
-
-	// http.ServeFile(
-	// 	c.Response.Out,
-	// 	c.Request.Request,
-	// 	fs_dir+file[len("ips/v1/pkg/dl"):],
-	// )
-
 	// TODO auth
 	fop, err := data.Storage.FoFileOpen("/ips" + file[len("ips/v1/pkg/dl"):])
 	if err != nil {

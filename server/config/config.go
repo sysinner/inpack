@@ -79,9 +79,9 @@ func Setup(prefix string) error {
 		Config.DataConnect.Connector = "iomix/sko/client-connector"
 		Config.DataConnect.Driver = types.NewNameIdentifier("lynkdb/kvgo")
 		Config.DataConnect.SetValue("data_dir", Prefix+"/var/db_inpack")
-		Config.DataConnect.SetValue("lynkdb/sskv/compaction_table_size", "16")
-		Config.DataConnect.SetValue("lynkdb/sskv/write_buffer", "8")
-		Config.DataConnect.SetValue("lynkdb/sskv/cache_capacity", "32")
+		Config.DataConnect.SetValue("lynkdb/sko/compaction_table_size", "16")
+		Config.DataConnect.SetValue("lynkdb/sko/write_buffer", "8")
+		Config.DataConnect.SetValue("lynkdb/sko/cache_capacity", "32")
 	}
 
 	if len(Config.InstanceId) < 16 {

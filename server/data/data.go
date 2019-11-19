@@ -21,7 +21,6 @@ import (
 	"github.com/hooto/hlog4g/hlog"
 	"github.com/lessos/lessgo/types"
 	"github.com/lynkdb/iomix/sko"
-	"github.com/lynkdb/iomix/skv"
 	"github.com/lynkdb/kvgo"
 
 	"github.com/sysinner/inpack/ipapi"
@@ -30,7 +29,7 @@ import (
 
 var (
 	Data    sko.ClientConnector
-	Storage skv.FileObjectConnector
+	Storage sko.ClientFileObjectConnector
 )
 
 func Setup() error {
@@ -82,7 +81,7 @@ func setupDataConnect() error {
 
 	if config.Config.DataConnect.Driver == "lynkdb/kvgo" {
 
-		db, err := kvgo.SkoOpen(config.Config.DataConnect)
+		db, err := kvgo.Open(config.Config.DataConnect)
 		if err != nil {
 			return err
 		}

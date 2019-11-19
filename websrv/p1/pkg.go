@@ -19,12 +19,12 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/hooto/httpsrv"
 	"github.com/lessos/lessgo/types"
 
 	"github.com/sysinner/inpack/ipapi"
-	"github.com/sysinner/inpack/server/config"
 	"github.com/sysinner/inpack/server/data"
 )
 
@@ -43,18 +43,16 @@ func (c Pkg) DlAction() {
 		return
 	}
 
-	// TODO auth
-	fs_dir := config.Config.StorageConnect.Value("data_dir")
-	if fs_dir == "" {
-		c.RenderError(400, "Bad Request")
+	fop, err := data.Storage.FoFileOpen("/ips" + file[len("ips/p1/pkg/dl"):])
+	if err != nil {
+		c.RenderError(404, "File Not Found")
 		return
 	}
 
-	http.ServeFile(
-		c.Response.Out,
-		c.Request.Request,
-		fs_dir+file[len("ips/p1/pkg/dl"):],
-	)
+	_, filename := filepath.Split(file)
+
+	c.Response.Out.Header().Set("Cache-Control", "max-age=86400")
+	http.ServeContent(c.Response.Out, c.Request.Request, filename, time.Now(), fop)
 }
 
 func (c Pkg) ListAction() {
