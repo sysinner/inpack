@@ -577,7 +577,12 @@ func _cmd(script string) error {
 	script = "set -e\nset -o pipefail\n" + script + "\nexit 0\n"
 
 	if out, err := exec.Command("bash", "-c", script).Output(); err != nil {
-		return fmt.Errorf("CMD ERR(%s) (%s)\nSCRIPT: {{{%s}}}", err.Error(), string(out), script)
+		scriptShow := ""
+		if hflag.Value("show_script").String() == "true" {
+			scriptShow = fmt.Sprintf(" Script >>> %s <<<", script)
+		}
+		return fmt.Errorf("Command Error (%s)\n Output %s\n%s\n",
+			err.Error(), string(out), scriptShow)
 	}
 
 	return nil
