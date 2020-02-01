@@ -258,7 +258,7 @@ func (c Pkg) CommitAction() {
 		Built:    pack_spec.Built,
 	}
 	for _, v := range pack_spec.Groups {
-		pack.Groups.Insert(v)
+		pack.Groups.Set(v)
 	}
 
 	if rs := data.Data.NewWriter(ipapi.DataPackKey(pkg_id), pack).Commit(); !rs.OK() {
@@ -579,7 +579,7 @@ func (c Pkg) MultipartCommitAction() {
 		Built:    pack_spec.Built,
 	}
 	for _, v := range pack_spec.Groups {
-		pack.Groups.Insert(v)
+		pack.Groups.Set(v)
 	}
 
 	if rs = data.Data.NewWriter(ipapi.DataPackKey(pkg_id), pack).Commit(); !rs.OK() {
