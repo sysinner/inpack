@@ -31,9 +31,9 @@ import (
 )
 
 // RHEL, CentOS
-//   yum install npm optipng
+//   yum install npm optipng upx
 // Debian, Ubuntu
-//   sudo apt-get install npm optipng
+//   sudo apt-get install npm optipng upx
 //
 // sudo npm install -g uglify-js clean-css-cli html-minifier esformatter js-beautify
 var (
