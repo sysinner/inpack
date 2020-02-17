@@ -76,7 +76,7 @@ func Setup(prefix string) error {
 		}
 
 		//
-		if err := json.DecodeFile(Prefix+"/etc/inpack_config.json", &Config); err != nil {
+		if err := json.DecodeFile(Prefix+"/etc/inpack_config.json", &Config); err != nil && !os.IsNotExist(err) {
 			return err
 		}
 	}
