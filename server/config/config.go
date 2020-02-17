@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/hooto/hconf4g/hconf"
 	"github.com/hooto/iam/iamapi"
 	"github.com/hooto/iam/iamclient"
 	"github.com/lessos/lessgo/crypto/idhash"
@@ -40,16 +41,16 @@ var (
 
 type ConfigCommon struct {
 	filepath      string
-	InstanceId    string              `json:"instance_id"`
-	SecretKey     string              `json:"secret_key"`
-	HttpPort      uint16              `json:"http_port,omitempty"`
-	DataConnect   connect.ConnOptions `json:"data_connect"`
-	IamServiceUrl string              `json:"iam_service_url,omitempty"`
-	PprofHttpPort uint16              `json:"pprof_http_port,omitempty"`
+	InstanceId    string              `json:"instance_id" toml:"instance_id"`
+	SecretKey     string              `json:"secret_key" toml:"secret_key"`
+	HttpPort      uint16              `json:"http_port,omitempty" toml:"http_port,omitempty"`
+	DataConnect   connect.ConnOptions `json:"data_connect" toml:"data_connect"`
+	IamServiceUrl string              `json:"iam_service_url,omitempty" toml:"iam_service_url,omitempty"`
+	PprofHttpPort uint16              `json:"pprof_http_port,omitempty" toml:"pprof_http_port,omitempty"`
 }
 
 func (cfg *ConfigCommon) Sync() error {
-	return json.EncodeToFile(cfg, cfg.filepath, "  ")
+	return hconf.EncodeToFile(cfg, cfg.filepath)
 }
 
 func (cfg *ConfigCommon) AccessKeyAuth() (iamapi.AccessKeyAuth, error) {
@@ -68,12 +69,19 @@ func Setup(prefix string) error {
 
 	Prefix = filepath.Clean(prefix)
 
-	//
-	file := Prefix + "/etc/inpack_config.json"
-	if err := json.DecodeFile(file, &Config); err != nil {
-		return err
+	if err := hconf.DecodeFromFile(&Config, Prefix+"/etc/inpack.conf"); err != nil {
+
+		if !os.IsNotExist(err) {
+			return err
+		}
+
+		//
+		if err := json.DecodeFile(Prefix+"/etc/inpack_config.json", &Config); err != nil {
+			return err
+		}
 	}
-	Config.filepath = file
+
+	Config.filepath = Prefix + "/etc/inpack.conf"
 
 	if Config.DataConnect.Connector == "" {
 		Config.DataConnect.Connector = "iomix/sko/client-connector"
