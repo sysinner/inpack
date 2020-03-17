@@ -25,8 +25,8 @@ type PackSpec struct {
 }
 
 type PackSpecProject struct {
-	Name        string            `json:"name" toml:"name"`
-	Version     types.Version     `json:"version" toml:"version"`
+	Name        string            `json:"name,omitempty" toml:"name,omitempty"`
+	Version     types.Version     `json:"version,omitempty" toml:"version,omitempty"`
 	Release     types.Version     `json:"release,omitempty" toml:"release,omitempty"`
 	Vendor      string            `json:"vendor,omitempty" toml:"vendor,omitempty"`
 	License     string            `json:"license,omitempty" toml:"license,omitempty"`

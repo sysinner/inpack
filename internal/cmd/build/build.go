@@ -216,11 +216,11 @@ func Cmd() error {
 			Description: cfg.Get("project/description").String(),
 		}
 
-		if cfg.Get("project/groups").String() != "" {
+		if len(cfg.Get("project/groups").String()) > 1 {
 			specItem.Project.Groups = strings.Split(cfg.Get("project/groups").String(), ",")
 		}
 
-		if cfg.Get("project/keywords").String() != "" {
+		if len(cfg.Get("project/keywords").String()) > 1 {
 			specItem.Project.Keywords = strings.Split(cfg.Get("project/keywords").String(), ",")
 		}
 
