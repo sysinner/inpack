@@ -47,7 +47,7 @@ type PkgInfo struct {
 
 func (c PkgInfo) ListAction() {
 
-	sets := ipapi.PackageInfoList{}
+	sets := ipapi.PackInfoList{}
 	defer c.RenderJson(&sets)
 
 	var (
@@ -68,7 +68,7 @@ func (c PkgInfo) ListAction() {
 			break
 		}
 
-		var set ipapi.PackageInfo
+		var set ipapi.PackInfo
 		if err := entry.Decode(&set); err != nil {
 			continue
 		}
@@ -81,7 +81,7 @@ func (c PkgInfo) ListAction() {
 			continue
 		}
 
-		sets.Items = append(sets.Items, ipapi.PackageInfo{
+		sets.Items = append(sets.Items, ipapi.PackInfo{
 			Meta: types.InnerObjectMeta{
 				Name:    set.Meta.Name,
 				Updated: set.Meta.Updated,
@@ -94,32 +94,32 @@ func (c PkgInfo) ListAction() {
 		return sets.Items[i].Meta.Updated > sets.Items[j].Meta.Updated
 	})
 
-	sets.Kind = "PackageInfoList"
+	sets.Kind = "PackInfoList"
 }
 
 func (c PkgInfo) EntryAction() {
 
-	set := ipapi.PackageInfo{}
+	set := ipapi.PackInfo{}
 	defer c.RenderJson(&set)
 
 	name := c.Params.Get("name")
-	if !ipapi.PackageNameRe.MatchString(name) {
-		set.Error = types.NewErrorMeta("404", "Invalid Package Name")
+	if !ipapi.PackNameRe.MatchString(name) {
+		set.Error = types.NewErrorMeta("404", "Invalid Pack Name")
 		return
 	}
 
 	rs := data.Data.NewReader(ipapi.DataInfoKey(name)).Query()
 	if !rs.OK() {
-		set.Error = types.NewErrorMeta("404", "PackageInfo Not Found")
+		set.Error = types.NewErrorMeta("404", "PackInfo Not Found")
 		return
 	}
 
 	if err := rs.Decode(&set); err != nil {
-		set.Error = types.NewErrorMeta("404", "PackageInfo Not Found")
+		set.Error = types.NewErrorMeta("404", "PackInfo Not Found")
 		return
 	}
 
-	set.Kind = "PackageInfo"
+	set.Kind = "PackInfo"
 }
 
 func (c PkgInfo) IconAction() {
@@ -132,7 +132,7 @@ func (c PkgInfo) IconAction() {
 		icon_size = int(c.Params.Int64("size"))
 	)
 
-	if !ipapi.PackageNameRe.MatchString(name) {
+	if !ipapi.PackNameRe.MatchString(name) {
 		return
 	}
 	name = strings.ToLower(name)
@@ -154,7 +154,7 @@ func (c PkgInfo) IconAction() {
 		icon_sh = icon_sh / 2
 	}
 
-	var icon ipapi.PackageInfoIcon
+	var icon ipapi.PackInfoIcon
 	if rs := data.Data.NewReader(ipapi.DataInfoIconKey(name, icon_type)).Query(); rs.OK() {
 		rs.Decode(&icon)
 		if len(icon.Data) > 10 {

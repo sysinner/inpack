@@ -27,11 +27,11 @@ type Group struct {
 
 func (c Group) ListAction() {
 
-	ls := ipapi.PackageGroupList{
+	ls := ipapi.PackGroupList{
 		TypeMeta: types.TypeMeta{
-			Kind: "PackageGroupList",
+			Kind: "PackGroupList",
 		},
-		Items: ipapi.PackageGroups,
+		Items: ipapi.PackGroups,
 	}
 
 	c.Response.Out.Header().Set("Access-Control-Allow-Origin", "*")

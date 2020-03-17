@@ -46,7 +46,7 @@ func IconSet() error {
 		arg_pkgname = filepath.Clean(v.String())
 	}
 	if arg_pkgname == "" {
-		return fmt.Errorf("Package Name Not Found")
+		return fmt.Errorf("Pack Name Not Found")
 	}
 
 	if v, ok := hflag.ValueOK("repo"); ok {
@@ -78,7 +78,7 @@ func IconSet() error {
 		return err
 	}
 
-	req := ipapi.PackageInfoIconSet{
+	req := ipapi.PackInfoIconSet{
 		Type: arg_icon_type,
 		Size: pack_stat.Size(),
 		Name: arg_pkgname,

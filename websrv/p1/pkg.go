@@ -57,7 +57,7 @@ func (c Pkg) DlAction() {
 
 func (c Pkg) ListAction() {
 
-	ls := ipapi.PackageList{}
+	ls := ipapi.PackList{}
 	defer c.RenderJson(&ls)
 
 	var (
@@ -67,8 +67,8 @@ func (c Pkg) ListAction() {
 		limit     = int(c.Params.Int64("limit"))
 	)
 
-	if !ipapi.PackageNameRe.MatchString(q_name) {
-		ls.Error = types.NewErrorMeta("400", "Invalid Package Name")
+	if !ipapi.PackNameRe.MatchString(q_name) {
+		ls.Error = types.NewErrorMeta("400", "Invalid Pack Name")
 		return
 	}
 
@@ -95,7 +95,7 @@ func (c Pkg) ListAction() {
 			// TOPO return 0
 		}
 
-		var set ipapi.Package
+		var set ipapi.Pack
 		if err := entry.Decode(&set); err != nil {
 			continue
 		}
@@ -127,14 +127,14 @@ func (c Pkg) ListAction() {
 		ls.Items = ls.Items[:limit]
 	}
 
-	ls.Kind = "PackageList"
+	ls.Kind = "PackList"
 }
 
 func (c Pkg) EntryAction() {
 
 	var set struct {
 		types.TypeMeta
-		ipapi.Package
+		ipapi.Pack
 	}
 	defer c.RenderJson(&set)
 
@@ -144,16 +144,16 @@ func (c Pkg) EntryAction() {
 	)
 
 	if id == "" && name == "" {
-		set.Error = types.NewErrorMeta("400", "Package ID or Name Not Found")
+		set.Error = types.NewErrorMeta("400", "Pack ID or Name Not Found")
 		return
 	} else if name != "" {
 
-		if !ipapi.PackageNameRe.MatchString(name) {
-			set.Error = types.NewErrorMeta("400", "Invalid Package Name")
+		if !ipapi.PackNameRe.MatchString(name) {
+			set.Error = types.NewErrorMeta("400", "Invalid Pack Name")
 			return
 		}
 
-		version := ipapi.PackageVersion{
+		version := ipapi.PackVersion{
 			Version: types.Version(c.Params.Get("version")),
 			Release: types.Version(c.Params.Get("release")),
 			Dist:    c.Params.Get("dist"),
@@ -163,13 +163,13 @@ func (c Pkg) EntryAction() {
 			set.Error = types.NewErrorMeta("400", err.Error())
 			return
 		}
-		id = ipapi.PackageFilenameKey(name, version)
+		id = ipapi.PackFilenameKey(name, version)
 	}
 
 	if id != "" {
 
 		if rs := data.Data.NewReader(ipapi.DataPackKey(id)).Query(); rs.OK() {
-			rs.Decode(&set.Package)
+			rs.Decode(&set.Pack)
 		} else if name != "" {
 			// TODO
 		} else {
@@ -178,8 +178,8 @@ func (c Pkg) EntryAction() {
 	}
 
 	if set.Meta.Name == "" {
-		set.Error = types.NewErrorMeta("404", "Package Not Found")
+		set.Error = types.NewErrorMeta("404", "Pack Not Found")
 	} else {
-		set.Kind = "Package"
+		set.Kind = "Pack"
 	}
 }

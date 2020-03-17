@@ -52,7 +52,7 @@ func List() error {
 
 	hc.Header("Authorization", aka.Encode())
 
-	var ls ipapi.PackageInfoList
+	var ls ipapi.PackInfoList
 	if err = hc.ReplyJson(&ls); err != nil {
 		return err
 	}

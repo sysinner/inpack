@@ -22,6 +22,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/hooto/hconf4g/hconf"
 	"github.com/hooto/hflag4g/hflag"
 	"github.com/lessos/lessgo/encoding/json"
 	"github.com/lessos/lessgo/types"
@@ -38,10 +39,11 @@ import (
 // sudo npm install -g uglify-js clean-css-cli html-minifier esformatter js-beautify
 var (
 	pack_dir          = ""
-	pack_spec         = "inpack.spec"
+	packSpecFile      = "inpack.toml"
+	packSpecFilePrev  = "inpack.spec"
 	build_tempdir     = ".build_tempdir"
 	build_src_tempdir = ".build_src_tempdir"
-	arg_output_dir    = ""
+	argOutputDir      = ""
 	packed_spec_dir   = ".inpack"
 	packed_spec       = packed_spec_dir + "/inpack.json"
 	jscp              = "uglifyjs %s -m -o %s"
@@ -91,17 +93,17 @@ func Cmd() error {
 	pack_dir, _ = filepath.Abs(pack_dir)
 
 	if v, ok := hflag.ValueOK("output"); ok {
-		arg_output_dir, _ = filepath.Abs(v.String())
-		if pack_dir == arg_output_dir || len(arg_output_dir) < 3 {
-			arg_output_dir = ""
-		} else if st, err := os.Stat(arg_output_dir); err != nil || !st.IsDir() {
-			arg_output_dir = ""
+		argOutputDir, _ = filepath.Abs(v.String())
+		if pack_dir == argOutputDir || len(argOutputDir) < 3 {
+			argOutputDir = ""
+		} else if st, err := os.Stat(argOutputDir); err != nil || !st.IsDir() {
+			argOutputDir = ""
 		}
 	}
 
-	ext_name := "txz"
+	extName := "txz"
 	if v, ok := hflag.ValueOK("compress-name"); ok && v.String() == "gzip" {
-		ext_name = "tgz"
+		extName = "tgz"
 	}
 
 	dist := ""
@@ -154,12 +156,14 @@ func Cmd() error {
 	}
 
 	var (
-		err        error
-		cfg        *ini.ConfigIni
-		spec_files = []string{
-			fmt.Sprintf("./%s", pack_spec),
-			fmt.Sprintf("./.inpack/%s", pack_spec),
-			fmt.Sprintf("./misc/inpack/%s", pack_spec),
+		err       error
+		specItem  ipapi.PackSpec
+		specFile  = ""
+		specFiles = []string{
+			//
+			fmt.Sprintf("./%s", packSpecFile),
+			fmt.Sprintf("./.inpack/%s", packSpecFile),
+			fmt.Sprintf("./misc/inpack/%s", packSpecFile),
 		}
 	)
 
@@ -168,58 +172,117 @@ func Cmd() error {
 		if _, err := os.Stat(spec_file); err != nil {
 			return fmt.Errorf("spec file Not Found %s", spec_file)
 		}
-		spec_files = append([]string{spec_file}, spec_files...)
+		specFiles = append([]string{spec_file}, specFiles...)
 	}
 
-	for _, v := range spec_files {
-
-		if cfg, err = ini.ConfigIniParse(v); err == nil {
+	for _, v := range specFiles {
+		if err = hconf.DecodeFromFile(&specItem, v); err == nil {
+			specFile = v
 			break
 		}
 	}
 
-	if cfg == nil {
-		return fmt.Errorf("No SPEC File Found")
-	}
+	if specItem.Project.Name == "" {
 
-	if v, ok := hflag.ValueOK("version"); ok {
-		cfg.Set("project/version", v.String())
-	}
+		var (
+			cfg           *ini.ConfigIni
+			specFilesPrev = []string{
+				fmt.Sprintf("./%s", packSpecFilePrev),
+				fmt.Sprintf("./.inpack/%s", packSpecFilePrev),
+				fmt.Sprintf("./misc/inpack/%s", packSpecFilePrev),
+			}
+		)
 
-	if v, ok := hflag.ValueOK("release"); ok {
-		cfg.Set("project/release", v.String())
-	} else {
-		cfg.Set("project/release", "1")
-	}
+		for _, v := range specFilesPrev {
+			if cfg, err = ini.ConfigIniParse(v); err == nil {
+				specFile = strings.Replace(v, packSpecFilePrev, packSpecFile, -1)
+				break
+			}
+		}
 
-	cfg.Set("project/dist", dist)
+		if cfg == nil {
+			return fmt.Errorf("No SPEC File Found")
+		}
 
-	//
-	pkg := ipapi.PackageSpec{
-		Name: cfg.Get("project/name").String(),
-		Version: ipapi.PackageVersion{
-			Version: types.Version(cfg.Get("project/version").String()),
-			Release: types.Version(cfg.Get("project/release").String()),
-			Dist:    "all", // dist,
-			Arch:    "src", // arch,
-		},
-		Project: ipapi.PackageProject{
+		specItem.Project = ipapi.PackSpecProject{
+			Name:        cfg.Get("project/name").String(),
+			Release:     types.Version(cfg.Get("project/release").String()),
+			Version:     types.Version(cfg.Get("project/version").String()),
 			Vendor:      cfg.Get("project/vendor").String(),
 			License:     cfg.Get("project/license").String(),
 			Homepage:    cfg.Get("project/homepage").String(),
-			Repository:  cfg.Get("project/repository").String(),
-			Author:      cfg.Get("project/author").String(),
 			Description: cfg.Get("project/description").String(),
+		}
+
+		if cfg.Get("project/groups").String() != "" {
+			specItem.Project.Groups = strings.Split(cfg.Get("project/groups").String(), ",")
+		}
+
+		if cfg.Get("project/keywords").String() != "" {
+			specItem.Project.Keywords = strings.Split(cfg.Get("project/keywords").String(), ",")
+		}
+
+		if cfg.Get("project/repository").String() != "" {
+			specItem.Project.Source = &ipapi.PackSpecSource{
+				Url: cfg.Get("project/repository").String(),
+			}
+		}
+
+		if cfg.Get("project/author").String() != "" {
+			specItem.Project.Authors = append(specItem.Project.Authors, &ipapi.PackSpecAuthor{
+				Name: cfg.Get("project/author").String(),
+			})
+		}
+
+		specItem.Files = ipapi.PackSpecFiles{
+			Allow:        cfg.Get("files").String(),
+			JsCompress:   cfg.Get("js_compress").String(),
+			CssCompress:  cfg.Get("css_compress").String(),
+			HtmlCompress: cfg.Get("html_compress").String(),
+			PngCompress:  cfg.Get("png_compress").String(),
+		}
+
+		if v := cfg.Get("build").String(); v != "" {
+			specItem.Scripts.Build = v + "\n"
+		}
+
+		if err := hconf.EncodeToFile(specItem, specFile, &hconf.EncodeOptions{
+			Indent: "",
+		}); err != nil {
+			return err
+		}
+	}
+
+	if v, ok := hflag.ValueOK("version"); ok {
+		specItem.Project.Version = types.Version(v.String())
+	}
+
+	if v, ok := hflag.ValueOK("release"); ok {
+		specItem.Project.Release = types.Version(v.String())
+	} else if specItem.Project.Release == "" {
+		specItem.Project.Release = "1"
+	}
+
+	//
+	pkg := ipapi.PackBuild{
+		Name: specItem.Project.Name,
+		Version: ipapi.PackVersion{
+			Version: specItem.Project.Version,
+			Release: specItem.Project.Release,
+			Dist:    dist,
+			Arch:    arch,
 		},
-		Built: types.MetaTimeNow(),
-	}
-	groups := strings.Split(cfg.Get("project/groups").String(), ",")
-	for _, v := range groups {
-		pkg.Groups.Set(v)
-	}
-	tags := strings.Split(cfg.Get("project/keywords").String(), ",")
-	for _, v := range tags {
-		pkg.Project.Keywords.Set(v)
+		Project: ipapi.PackSpecProject{
+			Vendor:      specItem.Project.Vendor,
+			License:     specItem.Project.License,
+			Homepage:    specItem.Project.Homepage,
+			Source:      specItem.Project.Source,
+			Authors:     specItem.Project.Authors,
+			Description: specItem.Project.Description,
+			Keywords:    specItem.Project.Keywords,
+		},
+		Groups: specItem.Project.Groups,
+		Built:  types.MetaTimeNow(),
 	}
 
 	fmt.Printf(`
@@ -242,35 +305,35 @@ Building
 	//
 	if _, ok := hflag.ValueOK("build_src"); ok {
 
-		target_name := ipapi.PackageFilename(pkg.Name, pkg.Version)
+		targetName := ipapi.PackFilename(pkg.Name, pkg.Version)
 
-		target_path := target_name + "." + ext_name
-		if arg_output_dir != "" {
-			target_path = arg_output_dir + "/" + target_path
+		target_path := targetName + "." + extName
+		if argOutputDir != "" {
+			target_path = argOutputDir + "/" + target_path
 		}
 
 		if _, err := os.Stat(target_path); err != nil {
 
-			if err := _build_source(cfg); err == nil {
+			if err := buildSource(&specItem, specFile); err == nil {
 
 				//
 				if err := json.EncodeToFile(pkg, fmt.Sprintf("%s/%s", build_src_tempdir, packed_spec), "  "); err != nil {
 					return err
 				}
 
-				if err := _tar_compress(build_src_tempdir, target_name, ext_name); err != nil {
+				if err := tarCompress(build_src_tempdir, targetName, extName); err != nil {
 					return err
 				}
 
-				if arg_output_dir != "" {
-					if err = os.Rename(target_name+"."+ext_name, arg_output_dir+"/"+target_name+"."+ext_name); err != nil {
+				if argOutputDir != "" {
+					if err = os.Rename(targetName+"."+extName, argOutputDir+"/"+targetName+"."+extName); err != nil {
 						return err
 					}
 				}
 			}
 			os.RemoveAll(build_src_tempdir)
 		} else {
-			fmt.Printf("  Target Package (%s) already existed\n", target_path)
+			fmt.Printf("  Target Pack (%s) already existed\n", target_path)
 		}
 	}
 
@@ -287,32 +350,24 @@ Building
 	pkg.Version.Arch = arch
 
 	if _, ok := hflag.ValueOK("build_nocompress"); !ok {
-		target_path := ipapi.PackageFilename(pkg.Name, pkg.Version) + "." + ext_name
-		if arg_output_dir != "" {
-			target_path = arg_output_dir + "/" + target_path
+		target_path := ipapi.PackFilename(pkg.Name, pkg.Version) + "." + extName
+		if argOutputDir != "" {
+			target_path = argOutputDir + "/" + target_path
 		}
 		if _, err := os.Stat(target_path); err == nil {
-			fmt.Printf("  Target Package (%s) already existed\n", target_path)
+			fmt.Printf("  Target Pack (%s) already existed\n", target_path)
 			return nil
 		}
 	}
 
-	cfg.Params("inpack__pack_dir", pack_dir)
-	cfg.Params("buildroot", build_tempdir)
-	cfg.Params("project__version", string(pkg.Version.Version))
-	cfg.Params("project__release", string(pkg.Version.Release))
-	cfg.Params("project__dist", dist)
-	cfg.Params("project__arch", arch)
-	cfg.Params("project__prefix", "/opt/"+pkg.Name)
-
 	os.Mkdir(build_tempdir, 0755)
 
-	subfiles := _lookup_files(cfg.Get("js_compress").String(), ".js")
+	subfiles := lookupFiles(specItem.Files.JsCompress, ".js")
 	if err := _compress(subfiles, jscp); err != nil {
 		return fmt.Errorf("JsCompress %s", err.Error())
 	}
 
-	subfiles = _lookup_files(cfg.Get("css_compress").String(), ".css")
+	subfiles = lookupFiles(specItem.Files.CssCompress, ".css")
 	if err := _compress(subfiles, csscp); err != nil {
 		return fmt.Errorf("CssCompress %s", err.Error())
 	}
@@ -331,31 +386,50 @@ Building
 			return err
 		}
 
-		subfiles = _lookup_files(cfg.Get("html_compress").String(), ".html")
+		subfiles = lookupFiles(specItem.Files.HtmlCompress, ".html")
 		if err := _compress(subfiles, htmlcp); err != nil {
 			return fmt.Errorf("HtmlCompress %s", err.Error())
 		}
 
-		subfiles = _lookup_files(cfg.Get("html_compress").String(), ".tpl")
+		subfiles = lookupFiles(specItem.Files.HtmlCompress, ".tpl")
 		if err := _compress(subfiles, htmlcp); err != nil {
 			return fmt.Errorf("HtmlCompress %s", err.Error())
 		}
 	}
 
-	subfiles = _lookup_files(cfg.Get("png_compress").String(), ".png")
+	subfiles = lookupFiles(specItem.Files.PngCompress, ".png")
 	if err := _compress(subfiles, pngcp); err != nil {
 		return fmt.Errorf("PngCompress %s", err.Error())
 	}
 
-	subfiles = _lookup_files(cfg.Get("files").String(), "")
+	subfiles = lookupFiles(specItem.Files.Allow, "")
 	if err := _compress(subfiles, filecp); err != nil {
 		return fmt.Errorf("FileCopy %s", err.Error())
 	}
 
 	os.MkdirAll(fmt.Sprintf("%s/%s", build_tempdir, packed_spec_dir), 0755)
 
-	if err := _cmd(cfg.Get("build").String()); err != nil {
-		return err
+	if len(specItem.Scripts.Build) > 0 {
+
+		scriptParams := map[string]string{
+			"inpack__pack_dir": pack_dir,
+			"buildroot":        build_tempdir,
+			"project__version": string(pkg.Version.Version),
+			"project__release": string(pkg.Version.Release),
+			"project__dist":    dist,
+			"project__arch":    arch,
+			"project__prefix":  "/opt/" + pkg.Name,
+		}
+
+		build := specItem.Scripts.Build
+
+		for k, v := range scriptParams {
+			build = strings.Replace(build, "{{."+k+"}}", v, -1)
+		}
+
+		if err := _cmd(build); err != nil {
+			return err
+		}
 	}
 
 	//
@@ -364,12 +438,12 @@ Building
 	}
 
 	if _, ok := hflag.ValueOK("build_nocompress"); !ok {
-		target_name := ipapi.PackageFilename(pkg.Name, pkg.Version)
-		if err = _tar_compress(build_tempdir, target_name, ext_name); err != nil {
+		targetName := ipapi.PackFilename(pkg.Name, pkg.Version)
+		if err = tarCompress(build_tempdir, targetName, extName); err != nil {
 			return err
 		}
-		if arg_output_dir != "" {
-			if err = os.Rename(target_name+"."+ext_name, arg_output_dir+"/"+target_name+"."+ext_name); err != nil {
+		if argOutputDir != "" {
+			if err = os.Rename(targetName+"."+extName, argOutputDir+"/"+targetName+"."+extName); err != nil {
 				return err
 			}
 		}
@@ -379,36 +453,36 @@ Building
 	return nil
 }
 
-func _tar_compress(dir, pkg_name, ext_name string) error {
+func tarCompress(dir, pkgName, extName string) error {
 
-	cmd_script := `
+	cmdScript := `
 cd ` + dir + `
-tar -cvf ` + pkg_name + `.tar .??* *
+tar -cvf ` + pkgName + `.tar .??* *
 `
 
-	switch ext_name {
+	switch extName {
 	case "txz":
-		cmd_script += `
-xz -z -e -9 -v ` + pkg_name + `.tar
-mv ` + pkg_name + `.tar.xz ../` + pkg_name + `.txz
+		cmdScript += `
+xz -z -e -9 -v ` + pkgName + `.tar
+mv ` + pkgName + `.tar.xz ../` + pkgName + `.txz
 `
 	case "tgz":
-		cmd_script += `
-gzip -9 ` + pkg_name + `.tar
-mv ` + pkg_name + `.tar.gz ../` + pkg_name + `.tgz
+		cmdScript += `
+gzip -9 ` + pkgName + `.tar
+mv ` + pkgName + `.tar.gz ../` + pkgName + `.tgz
 `
 	}
 
-	if err := _cmd(cmd_script); err != nil {
+	if err := _cmd(cmdScript); err != nil {
 		return err
 	}
 
-	fmt.Printf("  OK\n    %s.%s\n\n", pkg_name, ext_name)
+	fmt.Printf("  OK\n    %s.%s\n\n", pkgName, extName)
 
 	return nil
 }
 
-func _build_source(cfg *ini.ConfigIni) error {
+func buildSource(specItem *ipapi.PackSpec, specFile string) error {
 
 	out, _ := exec.Command("git", "ls-files").Output()
 	ls := strings.Split(strings.TrimSpace(string(out)), "\n")
@@ -426,7 +500,7 @@ func _build_source(cfg *ini.ConfigIni) error {
 
 		dstfile := fmt.Sprintf("./%s/%s", build_src_tempdir, file)
 
-		if _, fname := filepath.Split(dstfile); ignores.Contain(fname) {
+		if _, fname := filepath.Split(dstfile); ignores.Has(fname) {
 			continue
 		}
 
@@ -444,18 +518,18 @@ func _build_source(cfg *ini.ConfigIni) error {
 		}
 	}
 
-	spec_file := fmt.Sprintf("./%s/%s/%s", build_src_tempdir, packed_spec_dir, pack_spec)
-	if err := os.MkdirAll(filepath.Dir(spec_file), 0755); err != nil {
+	specFileTarget := fmt.Sprintf("./%s/%s/%s", build_src_tempdir, packed_spec_dir, packSpecFile)
+	if err := os.MkdirAll(filepath.Dir(specFileTarget), 0755); err != nil {
 		return err
 	}
-	if _, err := exec.Command("cp", "-rpf", cfg.File, spec_file).Output(); err != nil {
+	if _, err := exec.Command("cp", "-rpf", specFile, specFileTarget).Output(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func _lookup_files(txt, suffix string) types.ArrayString {
+func lookupFiles(txt, suffix string) types.ArrayString {
 
 	var subfiles types.ArrayString
 
@@ -468,6 +542,10 @@ func _lookup_files(txt, suffix string) types.ArrayString {
 			continue
 		}
 
+		if v[0] == '/' {
+			v = strings.TrimLeft(v, "/")
+		}
+
 		suffix2 := ""
 
 		if suffix == "" {
@@ -478,7 +556,7 @@ func _lookup_files(txt, suffix string) types.ArrayString {
 		}
 
 		v = filepath.Clean(v)
-		if _, fname := filepath.Split(v); ignores.Contain(fname) {
+		if _, fname := filepath.Split(v); ignores.Has(fname) {
 			continue
 		}
 
@@ -491,9 +569,9 @@ func _lookup_files(txt, suffix string) types.ArrayString {
 
 			if suffix == "" || (suffix != "" && strings.HasSuffix(v, suffix)) {
 
-				if !cpfiles.Contain(v) {
-					subfiles.Insert(v)
-					cpfiles.Insert(v)
+				if !cpfiles.Has(v) {
+					subfiles.Set(v)
+					cpfiles.Set(v)
 				}
 			}
 
@@ -520,7 +598,7 @@ func _lookup_files(txt, suffix string) types.ArrayString {
 
 			_, fvfile := filepath.Split(fv)
 
-			if ignores.Contain(fvfile) || strings.Contains(fv, ".git/") {
+			if ignores.Has(fvfile) || strings.Contains(fv, ".git/") {
 				continue
 			}
 
@@ -528,9 +606,9 @@ func _lookup_files(txt, suffix string) types.ArrayString {
 				continue
 			}
 
-			if !cpfiles.Contain(fv) {
-				subfiles.Insert(fv)
-				cpfiles.Insert(fv)
+			if !cpfiles.Has(fv) {
+				subfiles.Set(fv)
+				cpfiles.Set(fv)
 			}
 		}
 	}

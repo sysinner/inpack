@@ -32,7 +32,7 @@ var (
 
 func (c Channel) ListAction() {
 
-	sets := ipapi.PackageChannelList{}
+	sets := ipapi.PackChannelList{}
 	defer c.RenderJson(&sets)
 
 	if rs := data.Data.NewReader(nil).KeyRangeSet(
@@ -41,7 +41,7 @@ func (c Channel) ListAction() {
 
 		for _, entry := range rs.Items {
 
-			var set ipapi.PackageChannel
+			var set ipapi.PackChannel
 			if err := entry.Decode(&set); err == nil {
 				if set.Roles != nil && set.Roles.Read.MatchAny(allow_roles) {
 					set.Roles = nil
@@ -51,12 +51,12 @@ func (c Channel) ListAction() {
 		}
 	}
 
-	sets.Kind = "PackageChannelList"
+	sets.Kind = "PackChannelList"
 }
 
 func (c Channel) EntryAction() {
 
-	var set ipapi.PackageChannel
+	var set ipapi.PackChannel
 	defer c.RenderJson(&set)
 
 	name := c.Params.Get("name")
@@ -73,5 +73,5 @@ func (c Channel) EntryAction() {
 		return
 	}
 
-	set.Kind = "PackageChannel"
+	set.Kind = "PackChannel"
 }

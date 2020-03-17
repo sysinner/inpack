@@ -18,13 +18,13 @@ import (
 	"testing"
 )
 
-type valid_pkgname_entry struct {
+type validPackNameItem struct {
 	v  string
 	ok bool
 }
 
-func TestPackageNameRe(t *testing.T) {
-	vs := []valid_pkgname_entry{
+func TestPackNameRe(t *testing.T) {
+	vs := []validPackNameItem{
 		{"name", true},
 		{"Name", true},
 		{"name-name", true},
@@ -36,7 +36,7 @@ func TestPackageNameRe(t *testing.T) {
 		{"...", false},
 	}
 	for _, v := range vs {
-		if PackageNameRe.MatchString(v.v) != v.ok {
+		if PackNameRe.MatchString(v.v) != v.ok {
 			t.Fatal("Failed on Valid " + v.v)
 		}
 	}

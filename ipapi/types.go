@@ -24,19 +24,19 @@ import (
 )
 
 const (
-	PackageAPIVersion = "0.1.0.dev"
+	PackAPIVersion = "0.1.0.dev"
 )
 
 var (
 	ChannelNameRe   = regexp.MustCompile("^[a-z0-9]{3,10}$")
 	ChannelVendorRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9-.]{2,49}$")
-	PackageNameRe   = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9-_]{1,28}[a-zA-Z0-9]$")
+	PackNameRe      = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9-_]{1,28}[a-zA-Z0-9]$")
 	VersionDistRe   = types.ArrayString([]string{"all", "el7"})
 	VersionArchRe   = types.ArrayString([]string{"src", "x64"})
 )
 
 var (
-	PackageGroups = types.Labels{
+	PackGroups = types.Labels{
 		// for Application
 		{
 			Name:  "app/biz",
@@ -94,14 +94,14 @@ var (
 	}
 )
 
-type PackageVersion struct {
-	Version types.Version `json:"version"`
-	Release types.Version `json:"release"`
-	Dist    string        `json:"dist,omitempty"` // Distribution name
-	Arch    string        `json:"arch,omitempty"` // Computer architecture
+type PackVersion struct {
+	Version types.Version `json:"version" toml:"version"`
+	Release types.Version `json:"release" toml:"release"`
+	Dist    string        `json:"dist,omitempty" toml:"dist,omitempty"` // Distribution name
+	Arch    string        `json:"arch,omitempty" toml:"arch,omitempty"` // Computer architecture
 }
 
-func (it *PackageVersion) Valid() error {
+func (it *PackVersion) Valid() error {
 
 	if !it.Version.Valid() {
 		return errors.New("Invalid Version Value")
@@ -122,7 +122,7 @@ func (it *PackageVersion) Valid() error {
 	return nil
 }
 
-func (it *PackageVersion) Compare(cp PackageVersion) int {
+func (it *PackVersion) Compare(cp PackVersion) int {
 	if it.Version == cp.Version &&
 		it.Release == cp.Release &&
 		it.Dist == cp.Dist &&
@@ -132,28 +132,18 @@ func (it *PackageVersion) Compare(cp PackageVersion) int {
 	return 1
 }
 
-type PackageProject struct {
-	Vendor      string            `json:"vendor,omitempty"` // example.com
-	License     string            `json:"license,omitempty"`
-	Homepage    string            `json:"homepage,omitempty"`
-	Repository  string            `json:"repository,omitempty"`
-	Author      string            `json:"author,omitempty"`
-	Keywords    types.ArrayString `json:"keywords,omitempty"`
-	Description string            `json:"description,omitempty"`
+type PackBuild struct {
+	Name    string            `json:"name" toml:"name"`
+	Version PackVersion       `json:"version" toml:"version"`
+	Project PackSpecProject   `json:"project,omitempty" toml:"project,omitempty"`
+	Groups  types.ArrayString `json:"groups,omitempty" toml:"groups,omitempty"`
+	Labels  types.Labels      `json:"labels,omitempty" toml:"labels,omitempty"`
+	Built   types.MetaTime    `json:"built,omitempty" toml:"built,omitempty"`
 }
 
-type PackageSpec struct {
-	Name    string            `json:"name"`
-	Version PackageVersion    `json:"version"`
-	Project PackageProject    `json:"project,omitempty"`
-	Groups  types.ArrayString `json:"groups,omitempty"`
-	Labels  types.Labels      `json:"labels,omitempty"`
-	Built   types.MetaTime    `json:"built,omitempty"`
-}
+func (it *PackBuild) Valid() error {
 
-func (it *PackageSpec) Valid() error {
-
-	if !PackageNameRe.MatchString(it.Name) {
+	if !PackNameRe.MatchString(it.Name) {
 		return errors.New("Invalid Name")
 	}
 
@@ -164,40 +154,40 @@ func (it *PackageSpec) Valid() error {
 	return nil
 }
 
-func PackageFilename(name string, ver PackageVersion) string {
+func PackFilename(name string, ver PackVersion) string {
 	return fmt.Sprintf(
 		"%s-%s-%s.%s.%s",
 		name, ver.Version, ver.Release, ver.Dist, ver.Arch,
 	)
 }
 
-func PackageFilenameKey(name string, ver PackageVersion) string {
-	return strings.ToLower(PackageFilename(name, ver))
+func PackFilenameKey(name string, ver PackVersion) string {
+	return strings.ToLower(PackFilename(name, ver))
 }
 
-func PackageNameValid(name string) error {
-	if !PackageNameRe.MatchString(name) {
+func PackNameValid(name string) error {
+	if !PackNameRe.MatchString(name) {
 		return errors.New("Invalid Name")
 	}
 	return nil
 }
 
-type Package struct {
-	Meta     types.InnerObjectMeta `json:"meta,omitempty"`
-	Version  PackageVersion        `json:"version,omitempty"`
-	Project  PackageProject        `json:"project,omitempty"`
-	Groups   types.ArrayString     `json:"groups,omitempty"`
-	Labels   types.Labels          `json:"labels,omitempty"`
-	Channel  string                `json:"channel,omitempty"`
-	Built    types.MetaTime        `json:"built,omitempty"`
-	Size     int64                 `json:"size,omitempty"`
-	SumCheck string                `json:"sum_check,omitempty"`
-	OpPerm   uint8                 `json:"op_perm,omitempty"`
+type Pack struct {
+	Meta     types.InnerObjectMeta `json:"meta,omitempty" toml:"meta,omitempty"`
+	Version  PackVersion           `json:"version,omitempty" toml:"version,omitempty"`
+	Project  PackSpecProject       `json:"project,omitempty" toml:"project,omitempty"`
+	Groups   types.ArrayString     `json:"groups,omitempty" toml:"groups,omitempty"`
+	Labels   types.Labels          `json:"labels,omitempty" toml:"labels,omitempty"`
+	Channel  string                `json:"channel,omitempty" toml:"channel,omitempty"`
+	Built    types.MetaTime        `json:"built,omitempty" toml:"built,omitempty"`
+	Size     int64                 `json:"size,omitempty" toml:"size,omitempty"`
+	SumCheck string                `json:"sum_check,omitempty" toml:"sum_check,omitempty"`
+	OpPerm   uint8                 `json:"op_perm,omitempty" toml:"op_perm,omitempty"`
 }
 
-func (it *Package) Valid() error {
+func (it *Pack) Valid() error {
 
-	if !PackageNameRe.MatchString(it.Meta.Name) {
+	if !PackNameRe.MatchString(it.Meta.Name) {
 		return errors.New("Invalid Name")
 	}
 
@@ -208,100 +198,100 @@ func (it *Package) Valid() error {
 	return nil
 }
 
-type PackageList struct {
-	types.TypeMeta `json:",inline"`
-	Items          []Package `json:"items,omitempty"`
+type PackList struct {
+	types.TypeMeta `json:",inline" toml:",inline"`
+	Items          []Pack `json:"items,omitempty" toml:"items,omitempty"`
 }
 
-type PackageInfo struct {
+type PackInfo struct {
 	types.TypeMeta
-	Meta        types.InnerObjectMeta `json:"meta,omitempty"`
-	Project     PackageProject        `json:"project,omitempty"`
-	LastVersion types.Version         `json:"last_version,omitempty"`
-	Groups      types.ArrayString     `json:"groups,omitempty"`
-	StatNum     int64                 `json:"stat_num,omitempty"`
-	StatSize    int64                 `json:"stat_size,omitempty"`
-	StatNumOff  int64                 `json:"stat_num_off,omitempty"`
-	StatSizeOff int64                 `json:"stat_size_off,omitempty"`
-	Images      types.ArrayString     `json:"images,omitempty"`
-	OpPerm      uint8                 `json:"op_perm,omitempty"`
+	Meta        types.InnerObjectMeta `json:"meta,omitempty" toml:"meta,omitempty"`
+	Project     PackSpecProject       `json:"project,omitempty" toml:"project,omitempty"`
+	LastVersion types.Version         `json:"last_version,omitempty" toml:"last_version,omitempty"`
+	Groups      types.ArrayString     `json:"groups,omitempty" toml:"groups,omitempty"`
+	StatNum     int64                 `json:"stat_num,omitempty" toml:"stat_num,omitempty"`
+	StatSize    int64                 `json:"stat_size,omitempty" toml:"stat_size,omitempty"`
+	StatNumOff  int64                 `json:"stat_num_off,omitempty" toml:"stat_num_off,omitempty"`
+	StatSizeOff int64                 `json:"stat_size_off,omitempty" toml:"stat_size_off,omitempty"`
+	Images      types.ArrayString     `json:"images,omitempty" toml:"images,omitempty"`
+	OpPerm      uint8                 `json:"op_perm,omitempty" toml:"op_perm,omitempty"`
 }
 
-type PackageInfoList struct {
-	types.TypeMeta `json:",inline"`
-	Items          []PackageInfo `json:"items,omitempty"`
+type PackInfoList struct {
+	types.TypeMeta `json:",inline" toml:",inline"`
+	Items          []PackInfo `json:"items,omitempty" toml:"items,omitempty"`
 }
 
-type PackageInfoIcon struct {
-	Mime string `json:"mime"`
-	Data string `json:"data"`
+type PackInfoIcon struct {
+	Mime string `json:"mime" toml:"mime"`
+	Data string `json:"data" toml:"data"`
 }
 
-type PackageInfoIconSet struct {
-	types.TypeMeta `json:",inline"`
-	Name           string `json:"name"`
-	Type           string `json:"type"`
-	Size           int64  `json:"size"`
-	Data           string `json:"data,omitempty"`
+type PackInfoIconSet struct {
+	types.TypeMeta `json:",inline" toml:",inline"`
+	Name           string `json:"name" toml:"name"`
+	Type           string `json:"type" toml:"type"`
+	Size           int64  `json:"size" toml:"size"`
+	Data           string `json:"data,omitempty" toml:"data,omitempty"`
 }
 
-type PackageGroup struct {
-	Key         string `json:"key"`
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
+type PackGroup struct {
+	Key         string `json:"key" toml:"key"`
+	Name        string `json:"name" toml:"name"`
+	Description string `json:"description,omitempty" toml:"description,omitempty"`
 }
 
-type PackageGroupList struct {
-	types.TypeMeta `json:",inline"`
-	Items          types.Labels `json:"items,omitempty"`
+type PackGroupList struct {
+	types.TypeMeta `json:",inline" toml:",inline"`
+	Items          types.Labels `json:"items,omitempty" toml:"items,omitempty"`
 }
 
-type PackageChannel struct {
-	types.TypeMeta `json:",inline"`
-	Meta           types.InnerObjectMeta `json:"meta,omitempty"`
-	Type           string                `json:"type,omitempty"`
-	VendorName     string                `json:"vendor_name,omitempty"`
-	VendorAPI      string                `json:"vendor_api,omitempty"`
-	VendorSite     string                `json:"vendor_site,omitempty"`
-	Upstream       string                `json:"upstream,omitempty"`
-	StatNum        int64                 `json:"stat_num,omitempty"`
-	StatNumOff     int64                 `json:"stat_num_off,omitempty"`
-	StatSize       int64                 `json:"stat_size,omitempty"`
-	StatSizeOff    int64                 `json:"stat_size_off,omitempty"`
-	Roles          *PackageChannelRoles  `json:"roles,omitempty"`
+type PackChannel struct {
+	types.TypeMeta `json:",inline" toml:",inline"`
+	Meta           types.InnerObjectMeta `json:"meta,omitempty" toml:"meta,omitempty"`
+	Type           string                `json:"type,omitempty" toml:"type,omitempty"`
+	VendorName     string                `json:"vendor_name,omitempty" toml:"vendor_name,omitempty"`
+	VendorAPI      string                `json:"vendor_api,omitempty" toml:"vendor_api,omitempty"`
+	VendorSite     string                `json:"vendor_site,omitempty" toml:"vendor_site,omitempty"`
+	Upstream       string                `json:"upstream,omitempty" toml:"upstream,omitempty"`
+	StatNum        int64                 `json:"stat_num,omitempty" toml:"stat_num,omitempty"`
+	StatNumOff     int64                 `json:"stat_num_off,omitempty" toml:"stat_num_off,omitempty"`
+	StatSize       int64                 `json:"stat_size,omitempty" toml:"stat_size,omitempty"`
+	StatSizeOff    int64                 `json:"stat_size_off,omitempty" toml:"stat_size_off,omitempty"`
+	Roles          *PackChannelRoles     `json:"roles,omitempty" toml:"roles,omitempty"`
 }
 
-type PackageChannelRoles struct {
-	Create types.ArrayUint32 `json:"create,omitempty"`
-	Read   types.ArrayUint32 `json:"read,omitempty"`
-	Write  types.ArrayUint32 `json:"write,omitempty"`
+type PackChannelRoles struct {
+	Create types.ArrayUint32 `json:"create,omitempty" toml:"create,omitempty"`
+	Read   types.ArrayUint32 `json:"read,omitempty" toml:"read,omitempty"`
+	Write  types.ArrayUint32 `json:"write,omitempty" toml:"write,omitempty"`
 }
 
-type PackageChannelList struct {
-	types.TypeMeta `json:",inline"`
-	Items          []PackageChannel `json:"items,omitempty"`
+type PackChannelList struct {
+	types.TypeMeta `json:",inline" toml:",inline"`
+	Items          []PackChannel `json:"items,omitempty" toml:"items,omitempty"`
 }
 
-type PackageCommit struct {
-	types.TypeMeta `json:",inline"`
-	Name           string `json:"name"`
-	Size           int64  `json:"size"`
-	Channel        string `json:"channel"`
-	Data           string `json:"data"`
-	SumCheck       string `json:"sumcheck"`
-	AutoRelease    bool   `json:"auto_release"`
-	GitVersion     string `json:"git_version"`
+type PackCommit struct {
+	types.TypeMeta `json:",inline" toml:",inline"`
+	Name           string `json:"name" toml:"name"`
+	Size           int64  `json:"size" toml:"size"`
+	Channel        string `json:"channel" toml:"channel"`
+	Data           string `json:"data" toml:"data"`
+	SumCheck       string `json:"sumcheck" toml:"sumcheck"`
+	AutoRelease    bool   `json:"auto_release" toml:"auto_release"`
+	GitVersion     string `json:"git_version" toml:"git_version"`
 }
 
-type PackageMultipartCommit struct {
-	types.TypeMeta `json:",inline"`
-	Name           string         `json:"name"`
-	Version        PackageVersion `json:"version"`
-	Channel        string         `json:"channel"`
-	Size           int64          `json:"size"`
-	BlockOffset    int64          `json:"blk_offset"`
-	BlockData      string         `json:"blk_data"`
-	BlockCrc32     uint32         `json:"blk_crc32"`
+type PackMultipartCommit struct {
+	types.TypeMeta `json:",inline" toml:",inline"`
+	Name           string      `json:"name" toml:"name"`
+	Version        PackVersion `json:"version" toml:"version"`
+	Channel        string      `json:"channel" toml:"channel"`
+	Size           int64       `json:"size" toml:"size"`
+	BlockOffset    int64       `json:"blk_offset" toml:"blk_offset"`
+	BlockData      string      `json:"blk_data" toml:"blk_data"`
+	BlockCrc32     uint32      `json:"blk_crc32" toml:"blk_crc32"`
 }
 
 const (

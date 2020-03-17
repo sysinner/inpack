@@ -39,7 +39,7 @@ func Setup() error {
 	}
 
 	tn := types.MetaTimeNow()
-	def_channels := []ipapi.PackageChannel{
+	def_channels := []ipapi.PackChannel{
 		{
 			Meta: types.InnerObjectMeta{
 				Name:    "release",
@@ -48,7 +48,7 @@ func Setup() error {
 				Updated: tn,
 			},
 			VendorName: "localhost",
-			Roles: &ipapi.PackageChannelRoles{
+			Roles: &ipapi.PackChannelRoles{
 				Read: types.ArrayUint32([]uint32{100, 101}),
 			},
 		},
@@ -60,7 +60,7 @@ func Setup() error {
 				Updated: tn,
 			},
 			VendorName: "localhost",
-			Roles: &ipapi.PackageChannelRoles{
+			Roles: &ipapi.PackChannelRoles{
 				Create: types.ArrayUint32([]uint32{100, 101}),
 				Read:   types.ArrayUint32([]uint32{100, 101}),
 				Write:  types.ArrayUint32([]uint32{100, 101}),

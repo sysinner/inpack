@@ -42,7 +42,7 @@ func List() error {
 		arg_pkgname = filepath.Clean(v.String())
 	}
 	if arg_pkgname == "" {
-		return fmt.Errorf("Package Name Not Found")
+		return fmt.Errorf("Pack Name Not Found")
 	}
 
 	if v, ok := hflag.ValueOK("repo"); ok {
@@ -69,7 +69,7 @@ func List() error {
 
 	hc.Header("Authorization", aka.Encode())
 
-	var ls ipapi.PackageList
+	var ls ipapi.PackList
 	if err = hc.ReplyJson(&ls); err != nil {
 		return err
 	}

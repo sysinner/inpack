@@ -51,12 +51,12 @@ func main() {
 		flag.Parse()
 	}
 
-	if err = config.Init(*flagPrefix); err != nil {
+	if err = config.Setup(*flagPrefix); err != nil {
 		fmt.Printf("conf.Initialize error: %s\n", err.Error())
 		os.Exit(1)
 	}
 
-	if err = data.Init(config.Config.IoConnectors); err != nil {
+	if err = data.Setup(); err != nil {
 		fmt.Printf("data.Init error: %s\n", err.Error())
 		os.Exit(1)
 	}
@@ -66,7 +66,7 @@ func main() {
 	}
 	//
 	httpsrv.GlobalService.ModuleRegister("/ips/v1", v1.NewModule())
-	httpsrv.GlobalService.ModuleRegister("/ips", ui.NewModule())
+	httpsrv.GlobalService.ModuleRegister("/ips", ui.NewModule(""))
 
 	//
 	if config.Config.PprofHttpPort > 0 {

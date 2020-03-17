@@ -56,12 +56,12 @@ func Cmd() error {
 		arg_pack_path = filepath.Clean(v.String())
 	}
 	if arg_pack_path == "" {
-		return fmt.Errorf("Package Path (--pack_path) Not Found")
+		return fmt.Errorf("Pack Path (--pack_path) Not Found")
 	}
 	arg_pack_path, _ = filepath.Abs(arg_pack_path)
 	pack_stat, err := os.Stat(arg_pack_path)
 	if err != nil || pack_stat.IsDir() {
-		return fmt.Errorf("Package Path Not Found (%s)", arg_pack_path)
+		return fmt.Errorf("Pack Path Not Found (%s)", arg_pack_path)
 	}
 	if pack_stat.Size() < 1 {
 		return fmt.Errorf("pack size empty")
@@ -76,8 +76,8 @@ func Cmd() error {
 		return err
 	}
 
-	var pack_spec ipapi.PackageSpec
-	if err := json.Decode(spec, &pack_spec); err != nil {
+	var packBuild ipapi.PackBuild
+	if err := json.Decode(spec, &packBuild); err != nil {
 		return err
 	}
 
@@ -95,7 +95,7 @@ func Cmd() error {
 		url := fmt.Sprintf(
 			"%s/ips/v1/pkg/entry?id=%s",
 			cfg.Get(arg_repo, "service_url").String(),
-			ipapi.PackageFilenameKey(pack_spec.Name, pack_spec.Version),
+			ipapi.PackFilenameKey(packBuild.Name, packBuild.Version),
 		)
 
 		hcp := httpclient.Get(url)
@@ -106,18 +106,18 @@ func Cmd() error {
 		if err = hcp.ReplyJson(&rspkg); err != nil {
 			return err
 		}
-		if rspkg.Kind == "Package" {
-			fmt.Printf("  Target Package (%s) already existed\n",
-				ipapi.PackageFilename(pack_spec.Name, pack_spec.Version))
+		if rspkg.Kind == "Pack" {
+			fmt.Printf("  Target Pack (%s) already existed\n",
+				ipapi.PackFilename(packBuild.Name, packBuild.Version))
 			return nil
 		}
 	}
 
 	// do commit
-	req := ipapi.PackageMultipartCommit{
+	req := ipapi.PackMultipartCommit{
 		Channel: arg_channel,
-		Name:    pack_spec.Name,
-		Version: pack_spec.Version,
+		Name:    packBuild.Name,
+		Version: packBuild.Version,
 		Size:    pack_stat.Size(),
 	}
 
@@ -163,11 +163,11 @@ func Cmd() error {
 			break
 		}
 		if rsp.Error != nil {
-			fmt.Printf(" ERR %s: %s\n", pack_spec.Name, rsp.Error.Message)
+			fmt.Printf(" ERR %s: %s\n", packBuild.Name, rsp.Error.Message)
 			break
 		}
 
-		if rsp.Kind != "PackageMultipartCommit" {
+		if rsp.Kind != "PackMultipartCommit" {
 			fmt.Println("  Invalid response message")
 			break
 		}

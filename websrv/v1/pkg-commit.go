@@ -57,7 +57,7 @@ func (c Pkg) CommitAction() {
 	set := types.TypeMeta{}
 	defer c.RenderJson(&set)
 
-	var req ipapi.PackageCommit
+	var req ipapi.PackCommit
 	if err := c.Request.JsonDecode(&req); err != nil {
 		set.Error = types.NewErrorMeta("400", err.Error())
 		return
@@ -92,7 +92,7 @@ func (c Pkg) CommitAction() {
 
 	var (
 		chs     = channelList()
-		channel *ipapi.PackageChannel
+		channel *ipapi.PackChannel
 	)
 	for _, v := range chs {
 		if v.Meta.Name == req.Channel {
@@ -114,7 +114,7 @@ func (c Pkg) CommitAction() {
 
 	if req.Size > pkg_size_max {
 		set.Error = types.NewErrorMeta("400",
-			fmt.Sprintf("the max size of Package can not more than %d", pkg_size_max))
+			fmt.Sprintf("the max size of Pack can not more than %d", pkg_size_max))
 		return
 	}
 
@@ -124,7 +124,7 @@ func (c Pkg) CommitAction() {
 	}
 	filedata, err := base64.StdEncoding.DecodeString(body64[1])
 	if err != nil {
-		set.Error = types.NewErrorMeta("400", "Package Not Found")
+		set.Error = types.NewErrorMeta("400", "Pack Not Found")
 		return
 	}
 
@@ -155,35 +155,35 @@ func (c Pkg) CommitAction() {
 		return
 	}
 
-	var pack_spec ipapi.PackageSpec
-	if err := json.Decode(spec, &pack_spec); err != nil {
+	var packBuild ipapi.PackBuild
+	if err := json.Decode(spec, &packBuild); err != nil {
 		set.Error = types.NewErrorMeta("400", err.Error())
 		return
 	}
-	if err := pack_spec.Valid(); err != nil {
+	if err := packBuild.Valid(); err != nil {
 		set.Error = types.NewErrorMeta("400", err.Error())
 		return
 	}
 
-	pkg_filename := ipapi.PackageFilename(pack_spec.Name, pack_spec.Version)
+	pkg_filename := ipapi.PackFilename(packBuild.Name, packBuild.Version)
 	if !strings.HasPrefix(req.Name, pkg_filename) {
-		set.Error = types.NewErrorMeta("400", "Package Name Error")
+		set.Error = types.NewErrorMeta("400", "Pack Name Error")
 		return
 	}
 
 	//
-	pkg_id := ipapi.PackageFilenameKey(pack_spec.Name, pack_spec.Version)
+	pkg_id := ipapi.PackFilenameKey(packBuild.Name, packBuild.Version)
 
 	rs := data.Data.NewReader(ipapi.DataPackKey(pkg_id)).Query()
 	if !rs.NotFound() {
-		set.Error = types.NewErrorMeta("400", "Package already exists")
+		set.Error = types.NewErrorMeta("400", "Pack already exists")
 		return
 	}
 
 	// TODO  /name/version/*
 	path := fmt.Sprintf(
 		"/ips/%s/%s/%s",
-		pack_spec.Name, pack_spec.Version.Version, req.Name,
+		packBuild.Name, packBuild.Version.Version, req.Name,
 	)
 	// dir := filepath.Dir(path)
 	// if st, err := data.Storage.Stat(dir); os.IsNotExist(err) {
@@ -242,22 +242,22 @@ func (c Pkg) CommitAction() {
 	}
 
 	// package file
-	pack := ipapi.Package{
+	pack := ipapi.Pack{
 		Meta: types.InnerObjectMeta{
 			ID:      pkg_id,
-			Name:    pack_spec.Name,
+			Name:    packBuild.Name,
 			User:    aksess.User,
 			Created: types.MetaTimeNow(),
 			Updated: types.MetaTimeNow(),
 		},
-		Version:  pack_spec.Version,
+		Version:  packBuild.Version,
 		Size:     fsize,
 		SumCheck: sum_check,
-		Project:  pack_spec.Project,
+		Project:  packBuild.Project,
 		Channel:  channel.Meta.Name,
-		Built:    pack_spec.Built,
+		Built:    packBuild.Built,
 	}
-	for _, v := range pack_spec.Groups {
+	for _, v := range packBuild.Groups {
 		pack.Groups.Set(v)
 	}
 
@@ -266,19 +266,19 @@ func (c Pkg) CommitAction() {
 		return
 	}
 
-	var prev_info ipapi.PackageInfo
-	name_lower := strings.ToLower(pack_spec.Name)
+	var prev_info ipapi.PackInfo
+	name_lower := strings.ToLower(packBuild.Name)
 	if rs := data.Data.NewReader(ipapi.DataInfoKey(name_lower)).Query(); rs.NotFound() {
 
-		prev_info = ipapi.PackageInfo{
+		prev_info = ipapi.PackInfo{
 			Meta: types.InnerObjectMeta{
-				Name:    pack_spec.Name,
+				Name:    packBuild.Name,
 				User:    aksess.User,
 				Created: types.MetaTimeNow(),
 			},
-			LastVersion: pack_spec.Version.Version,
-			Project:     pack_spec.Project,
-			Groups:      pack_spec.Groups,
+			LastVersion: packBuild.Version.Version,
+			Project:     packBuild.Project,
+			Groups:      packBuild.Groups,
 			StatNum:     1,
 			StatSize:    pack.Size,
 		}
@@ -290,9 +290,9 @@ func (c Pkg) CommitAction() {
 			return
 		}
 
-		switch pack_spec.Version.Version.Compare(&prev_info.LastVersion) {
+		switch packBuild.Version.Version.Compare(&prev_info.LastVersion) {
 		case 1:
-			prev_info.LastVersion = pack_spec.Version.Version
+			prev_info.LastVersion = packBuild.Version.Version
 		}
 
 		//
@@ -300,18 +300,18 @@ func (c Pkg) CommitAction() {
 		prev_info.StatSize += pack.Size
 
 		if prev_info.Project.Description == "" &&
-			prev_info.Project.Description != pack_spec.Project.Description {
-			prev_info.Project.Description = pack_spec.Project.Description
+			prev_info.Project.Description != packBuild.Project.Description {
+			prev_info.Project.Description = packBuild.Project.Description
 		}
 
 		if prev_info.Project.Homepage == "" &&
-			prev_info.Project.Homepage != pack_spec.Project.Homepage {
-			prev_info.Project.Homepage = pack_spec.Project.Homepage
+			prev_info.Project.Homepage != packBuild.Project.Homepage {
+			prev_info.Project.Homepage = packBuild.Project.Homepage
 		}
 
 		if len(prev_info.Groups) < 1 &&
-			!prev_info.Groups.Equal(pack_spec.Groups) {
-			prev_info.Groups = pack_spec.Groups
+			!prev_info.Groups.Equal(packBuild.Groups) {
+			prev_info.Groups = packBuild.Groups
 		}
 
 		if prev_info.Meta.User == "" {
@@ -334,7 +334,7 @@ func (c Pkg) CommitAction() {
 	channel.StatSize += pack.Size
 	data.Data.NewWriter(ipapi.DataChannelKey(channel.Meta.Name), channel).Commit()
 
-	set.Kind = "PackageCommit"
+	set.Kind = "PackCommit"
 }
 
 func (c Pkg) MultipartCommitAction() {
@@ -342,7 +342,7 @@ func (c Pkg) MultipartCommitAction() {
 	set := types.TypeMeta{}
 	defer c.RenderJson(&set)
 
-	var req ipapi.PackageMultipartCommit
+	var req ipapi.PackMultipartCommit
 	if err := c.Request.JsonDecode(&req); err != nil {
 		set.Error = types.NewErrorMeta("400", err.Error())
 		return
@@ -377,7 +377,7 @@ func (c Pkg) MultipartCommitAction() {
 
 	var (
 		chs     = channelList()
-		channel *ipapi.PackageChannel
+		channel *ipapi.PackChannel
 	)
 	for _, v := range chs {
 		if v.Meta.Name == req.Channel {
@@ -398,7 +398,7 @@ func (c Pkg) MultipartCommitAction() {
 	}
 
 	if req.Size > pkg_size_max {
-		set.Error = types.NewErrorMeta("400", fmt.Sprintf("the max size of Package can not more than %d", pkg_size_max))
+		set.Error = types.NewErrorMeta("400", fmt.Sprintf("the max size of Pack can not more than %d", pkg_size_max))
 		return
 	}
 
@@ -408,23 +408,23 @@ func (c Pkg) MultipartCommitAction() {
 	}
 	block_data, err := base64.StdEncoding.DecodeString(body64[1])
 	if err != nil {
-		set.Error = types.NewErrorMeta("400", "Package Not Found")
+		set.Error = types.NewErrorMeta("400", "Pack Not Found")
 		return
 	}
 
 	fsize := int64(len(block_data))
 	if req.BlockOffset+fsize > req.Size {
-		set.Error = types.NewErrorMeta("400", "Invalid Package Offset, Size or Data Set")
+		set.Error = types.NewErrorMeta("400", "Invalid Pack Offset, Size or Data Set")
 		return
 	}
 
 	if req.BlockCrc32 != crc32.ChecksumIEEE(block_data) {
-		set.Error = types.NewErrorMeta("400", "Invalid Package BlockCrc32 SumCheck")
+		set.Error = types.NewErrorMeta("400", "Invalid Pack BlockCrc32 SumCheck")
 		return
 	}
 
 	//
-	if err := ipapi.PackageNameValid(req.Name); err != nil {
+	if err := ipapi.PackNameValid(req.Name); err != nil {
 		set.Error = types.NewErrorMeta("400", err.Error())
 		return
 	}
@@ -436,12 +436,12 @@ func (c Pkg) MultipartCommitAction() {
 	}
 
 	//
-	pkg_id := ipapi.PackageFilenameKey(req.Name, req.Version)
-	pkg_name := ipapi.PackageFilename(req.Name, req.Version)
+	pkg_id := ipapi.PackFilenameKey(req.Name, req.Version)
+	pkg_name := ipapi.PackFilename(req.Name, req.Version)
 
 	rs := data.Data.NewReader(ipapi.DataPackKey(pkg_id)).Query()
 	if !rs.NotFound() {
-		set.Error = types.NewErrorMeta("400", "Package already exists")
+		set.Error = types.NewErrorMeta("400", "Pack already exists")
 		return
 	}
 
@@ -474,7 +474,7 @@ func (c Pkg) MultipartCommitAction() {
 	}
 
 	if req.BlockOffset+fsize < req.Size {
-		set.Kind = "PackageMultipartCommit"
+		set.Kind = "PackMultipartCommit"
 		return
 	}
 
@@ -486,31 +486,31 @@ func (c Pkg) MultipartCommitAction() {
 		return
 	}
 
-	var pack_spec ipapi.PackageSpec
-	if err := json.Decode(spec, &pack_spec); err != nil {
+	var packBuild ipapi.PackBuild
+	if err := json.Decode(spec, &packBuild); err != nil {
 		set.Error = types.NewErrorMeta("400", err.Error())
 		return
 	}
 
-	if err := pack_spec.Valid(); err != nil {
+	if err := packBuild.Valid(); err != nil {
 		set.Error = types.NewErrorMeta("400", err.Error())
 		return
 	}
 
-	if pack_spec.Version.Compare(req.Version) != 0 {
-		set.Error = types.NewErrorMeta("400", "Invalid Package Version Set")
+	if packBuild.Version.Compare(req.Version) != 0 {
+		set.Error = types.NewErrorMeta("400", "Invalid Pack Version Set")
 		return
 	}
 
-	if pkg_name != ipapi.PackageFilename(pack_spec.Name, pack_spec.Version) {
-		set.Error = types.NewErrorMeta("400", "Package Name Error")
+	if pkg_name != ipapi.PackFilename(packBuild.Name, packBuild.Version) {
+		set.Error = types.NewErrorMeta("400", "Pack Name Error")
 		return
 	}
 
 	// TODO  /name/version/*
 	path := fmt.Sprintf(
 		"/ips/%s/%s/%s.txz",
-		pack_spec.Name, pack_spec.Version.Version, pkg_name,
+		packBuild.Name, packBuild.Version.Version, pkg_name,
 	)
 	// dir := filepath.Dir(path)
 	// if st, err := data.Storage.Stat(dir); os.IsNotExist(err) {
@@ -563,22 +563,22 @@ func (c Pkg) MultipartCommitAction() {
 	}
 
 	// package file
-	pack := ipapi.Package{
+	pack := ipapi.Pack{
 		Meta: types.InnerObjectMeta{
 			ID:      pkg_id,
-			Name:    pack_spec.Name,
+			Name:    packBuild.Name,
 			User:    aksess.User,
 			Created: types.MetaTimeNow(),
 			Updated: types.MetaTimeNow(),
 		},
-		Version:  pack_spec.Version,
+		Version:  packBuild.Version,
 		Size:     req.Size,
 		SumCheck: sum_check,
-		Project:  pack_spec.Project,
+		Project:  packBuild.Project,
 		Channel:  channel.Meta.Name,
-		Built:    pack_spec.Built,
+		Built:    packBuild.Built,
 	}
-	for _, v := range pack_spec.Groups {
+	for _, v := range packBuild.Groups {
 		pack.Groups.Set(v)
 	}
 
@@ -587,19 +587,19 @@ func (c Pkg) MultipartCommitAction() {
 		return
 	}
 
-	var prev_info ipapi.PackageInfo
-	name_lower := strings.ToLower(pack_spec.Name)
+	var prev_info ipapi.PackInfo
+	name_lower := strings.ToLower(packBuild.Name)
 	if rs := data.Data.NewReader(ipapi.DataInfoKey(name_lower)).Query(); rs.NotFound() {
 
-		prev_info = ipapi.PackageInfo{
+		prev_info = ipapi.PackInfo{
 			Meta: types.InnerObjectMeta{
-				Name:    pack_spec.Name,
+				Name:    packBuild.Name,
 				User:    aksess.User,
 				Created: types.MetaTimeNow(),
 			},
-			LastVersion: pack_spec.Version.Version,
-			Project:     pack_spec.Project,
-			Groups:      pack_spec.Groups,
+			LastVersion: packBuild.Version.Version,
+			Project:     packBuild.Project,
+			Groups:      packBuild.Groups,
 			StatNum:     1,
 			StatSize:    pack.Size,
 		}
@@ -611,9 +611,9 @@ func (c Pkg) MultipartCommitAction() {
 			return
 		}
 
-		switch pack_spec.Version.Version.Compare(&prev_info.LastVersion) {
+		switch packBuild.Version.Version.Compare(&prev_info.LastVersion) {
 		case 1:
-			prev_info.LastVersion = pack_spec.Version.Version
+			prev_info.LastVersion = packBuild.Version.Version
 		}
 
 		//
@@ -621,18 +621,18 @@ func (c Pkg) MultipartCommitAction() {
 		prev_info.StatSize += pack.Size
 
 		if prev_info.Project.Description == "" &&
-			prev_info.Project.Description != pack_spec.Project.Description {
-			prev_info.Project.Description = pack_spec.Project.Description
+			prev_info.Project.Description != packBuild.Project.Description {
+			prev_info.Project.Description = packBuild.Project.Description
 		}
 
 		if prev_info.Project.Homepage == "" &&
-			prev_info.Project.Homepage != pack_spec.Project.Homepage {
-			prev_info.Project.Homepage = pack_spec.Project.Homepage
+			prev_info.Project.Homepage != packBuild.Project.Homepage {
+			prev_info.Project.Homepage = packBuild.Project.Homepage
 		}
 
 		if len(prev_info.Groups) < 1 &&
-			!prev_info.Groups.Equal(pack_spec.Groups) {
-			prev_info.Groups = pack_spec.Groups
+			!prev_info.Groups.Equal(packBuild.Groups) {
+			prev_info.Groups = packBuild.Groups
 		}
 
 		if prev_info.Meta.User == "" {
@@ -655,7 +655,7 @@ func (c Pkg) MultipartCommitAction() {
 	channel.StatSize += pack.Size
 	data.Data.NewWriter(ipapi.DataChannelKey(channel.Meta.Name), channel).Commit()
 
-	set.Kind = "PackageMultipartCommit"
+	set.Kind = "PackMultipartCommit"
 }
 
 func ipm_entry_sync_sumcheck(filepath string) string {

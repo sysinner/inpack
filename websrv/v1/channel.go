@@ -36,7 +36,7 @@ func (c *Channel) Init() int {
 
 func (c Channel) ListAction() {
 
-	sets := ipapi.PackageChannelList{}
+	sets := ipapi.PackChannelList{}
 	defer c.RenderJson(&sets)
 
 	if rs := data.Data.NewReader(nil).KeyRangeSet(
@@ -44,7 +44,7 @@ func (c Channel) ListAction() {
 
 		for _, entry := range rs.Items {
 
-			var set ipapi.PackageChannel
+			var set ipapi.PackChannel
 			if err := entry.Decode(&set); err == nil {
 				if c.us.UserName == "sysadmin" ||
 					c.us.UserName == set.Meta.User ||
@@ -55,12 +55,12 @@ func (c Channel) ListAction() {
 		}
 	}
 
-	sets.Kind = "PackageChannelList"
+	sets.Kind = "PackChannelList"
 }
 
 func (c Channel) EntryAction() {
 
-	var set ipapi.PackageChannel
+	var set ipapi.PackChannel
 	defer c.RenderJson(&set)
 
 	name := c.Params.Get("name")
@@ -80,12 +80,12 @@ func (c Channel) EntryAction() {
 		return
 	}
 
-	set.Kind = "PackageChannel"
+	set.Kind = "PackChannel"
 }
 
 func (c Channel) SetAction() {
 
-	set := ipapi.PackageChannel{}
+	set := ipapi.PackChannel{}
 	defer c.RenderJson(&set)
 
 	if err := c.Request.JsonDecode(&set); err != nil {
@@ -110,7 +110,7 @@ func (c Channel) SetAction() {
 
 	if rs := data.Data.NewReader(ipapi.DataChannelKey(set.Meta.Name)).Query(); rs.OK() {
 
-		var prev ipapi.PackageChannel
+		var prev ipapi.PackChannel
 
 		if err := rs.Decode(&prev); err != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error "+err.Error())
@@ -136,7 +136,7 @@ func (c Channel) SetAction() {
 		set.Meta.Created = types.MetaTimeNow()
 
 		if set.Roles == nil {
-			set.Roles = &ipapi.PackageChannelRoles{}
+			set.Roles = &ipapi.PackChannelRoles{}
 			set.Roles.Read.Set(100)
 		}
 	}
@@ -149,12 +149,12 @@ func (c Channel) SetAction() {
 		return
 	}
 
-	set.Kind = "PackageChannel"
+	set.Kind = "PackChannel"
 }
 
 func (c Channel) DeleteAction() {
 
-	set := ipapi.PackageChannel{}
+	set := ipapi.PackChannel{}
 	defer c.RenderJson(&set)
 
 	if !c.us.IsLogin() || c.us.UserName != "sysadmin" {
@@ -190,5 +190,5 @@ func (c Channel) DeleteAction() {
 		return
 	}
 
-	set.Kind = "PackageChannel"
+	set.Kind = "PackChannel"
 }

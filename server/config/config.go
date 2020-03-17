@@ -50,7 +50,7 @@ type ConfigCommon struct {
 }
 
 func (cfg *ConfigCommon) Sync() error {
-	return hconf.EncodeToFile(cfg, cfg.filepath)
+	return hconf.EncodeToFile(cfg, cfg.filepath, nil)
 }
 
 func (cfg *ConfigCommon) AccessKeyAuth() (iamapi.AccessKeyAuth, error) {
