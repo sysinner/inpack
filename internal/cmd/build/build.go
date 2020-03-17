@@ -179,6 +179,8 @@ func Cmd() error {
 		if err = hconf.DecodeFromFile(&specItem, v); err == nil {
 			specFile = v
 			break
+		} else if !os.IsNotExist(err) {
+			return err
 		}
 	}
 
