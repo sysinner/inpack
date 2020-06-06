@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/hooto/hconf4g/hconf"
+	"github.com/hooto/htoml4g/htoml"
 	"github.com/hooto/iam/iamapi"
 	"github.com/hooto/iam/iamclient"
 	"github.com/lessos/lessgo/crypto/idhash"
@@ -27,6 +27,7 @@ import (
 	"github.com/lessos/lessgo/types"
 	"github.com/lynkdb/iomix/connect"
 	iox_utils "github.com/lynkdb/iomix/utils"
+	"github.com/lynkdb/kvgo"
 )
 
 var (
@@ -45,12 +46,13 @@ type ConfigCommon struct {
 	SecretKey     string              `json:"secret_key" toml:"secret_key"`
 	HttpPort      uint16              `json:"http_port,omitempty" toml:"http_port,omitempty"`
 	DataConnect   connect.ConnOptions `json:"data_connect" toml:"data_connect"`
+	Data          *kvgo.Config        `json:"data,omitempty" toml:"data,omitempty"`
 	IamServiceUrl string              `json:"iam_service_url,omitempty" toml:"iam_service_url,omitempty"`
 	PprofHttpPort uint16              `json:"pprof_http_port,omitempty" toml:"pprof_http_port,omitempty"`
 }
 
 func (cfg *ConfigCommon) Sync() error {
-	return hconf.EncodeToFile(cfg, cfg.filepath, nil)
+	return htoml.EncodeToFile(cfg, cfg.filepath, nil)
 }
 
 func (cfg *ConfigCommon) AccessKeyAuth() (iamapi.AccessKeyAuth, error) {
@@ -69,7 +71,7 @@ func Setup(prefix string) error {
 
 	Prefix = filepath.Clean(prefix)
 
-	if err := hconf.DecodeFromFile(&Config, Prefix+"/etc/inpack.conf"); err != nil {
+	if err := htoml.DecodeFromFile(&Config, Prefix+"/etc/inpack.conf"); err != nil {
 
 		if !os.IsNotExist(err) {
 			return err
@@ -90,6 +92,14 @@ func Setup(prefix string) error {
 		Config.DataConnect.SetValue("lynkdb/sko/compaction_table_size", "16")
 		Config.DataConnect.SetValue("lynkdb/sko/write_buffer", "8")
 		Config.DataConnect.SetValue("lynkdb/sko/cache_capacity", "32")
+	}
+
+	if Config.Data == nil {
+		cfg, err := kvgo.ConfigParse(Config.DataConnect)
+		if err != nil {
+			return err
+		}
+		Config.Data = cfg
 	}
 
 	if len(Config.InstanceId) < 16 {

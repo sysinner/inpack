@@ -16,9 +16,7 @@ package data
 
 import (
 	"errors"
-	"fmt"
 
-	"github.com/hooto/hlog4g/hlog"
 	"github.com/lessos/lessgo/types"
 	"github.com/lynkdb/iomix/sko"
 	"github.com/lynkdb/kvgo"
@@ -79,27 +77,17 @@ func Setup() error {
 
 func setupDataConnect() error {
 
-	if config.Config.DataConnect.Driver == "lynkdb/kvgo" {
-
-		db, err := kvgo.Open(config.Config.DataConnect)
-		if err != nil {
-			return err
-		}
-
-		Data = db
-		Storage = db
-
-		hlog.Printf("info", "DataConnect (%s) Open %s OK",
-			config.Config.DataConnect.Name, config.Config.DataConnect.Driver)
+	if config.Config.Data == nil {
+		return errors.New("no data connect options found")
 	}
 
-	if Data == nil {
-		return fmt.Errorf("No DataConnect Setup")
+	db, err := kvgo.Open(config.Config.Data)
+	if err != nil {
+		return err
 	}
 
-	if Storage == nil {
-		return fmt.Errorf("No StorageConnect Setup")
-	}
+	Data = db
+	Storage = db
 
 	return nil
 }
