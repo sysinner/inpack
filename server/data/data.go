@@ -18,16 +18,16 @@ import (
 	"errors"
 
 	"github.com/lessos/lessgo/types"
-	"github.com/lynkdb/iomix/sko"
 	"github.com/lynkdb/kvgo"
+	kv2 "github.com/lynkdb/kvspec/go/kvspec/v2"
 
 	"github.com/sysinner/inpack/ipapi"
 	"github.com/sysinner/inpack/server/config"
 )
 
 var (
-	Data    sko.ClientConnector
-	Storage sko.ClientFileObjectConnector
+	Data    kv2.Client
+	Storage kv2.ClientFileObjectConnector
 )
 
 func Setup() error {
@@ -86,8 +86,13 @@ func setupDataConnect() error {
 		return err
 	}
 
+	dbs, err := kvgo.NewFileObjectConn(db, "main")
+	if err != nil {
+		return err
+	}
+
 	Data = db
-	Storage = db
+	Storage = dbs
 
 	return nil
 }
