@@ -22,8 +22,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/hooto/hconf4g/hconf"
 	"github.com/hooto/hflag4g/hflag"
+	"github.com/hooto/htoml4g/htoml"
 	"github.com/lessos/lessgo/encoding/json"
 	"github.com/lessos/lessgo/types"
 
@@ -176,7 +176,7 @@ func Cmd() error {
 	}
 
 	for _, v := range specFiles {
-		if err = hconf.DecodeFromFile(&specItem, v); err == nil {
+		if err = htoml.DecodeFromFile(&specItem, v); err == nil {
 			specFile = v
 			break
 		} else if !os.IsNotExist(err) {
@@ -248,7 +248,7 @@ func Cmd() error {
 			specItem.Scripts.Build = v + "\n"
 		}
 
-		if err := hconf.EncodeToFile(specItem, specFile, &hconf.EncodeOptions{
+		if err := htoml.EncodeToFile(specItem, specFile, &htoml.EncodeOptions{
 			Indent: "",
 		}); err != nil {
 			return err
