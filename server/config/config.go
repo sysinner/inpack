@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/hooto/hauth/go/hauth/v1"
 	"github.com/hooto/htoml4g/htoml"
 	"github.com/hooto/iam/iamapi"
 	"github.com/hooto/iam/iamclient"
@@ -35,7 +36,7 @@ var (
 	Version          = "0.9.0"
 	Config           ConfigCommon
 	err              error
-	init_cache_akacc iamapi.AccessKey
+	init_cache_akacc hauth.AccessKey
 	init_sys_user    = "sysadmin"
 )
 
@@ -124,20 +125,23 @@ func IamAppInstance() iamapi.AppInstance {
 	}
 }
 
-func InitIamAccessKeyData() []iamapi.AccessKey {
+func InitIamAccessKeyData() []hauth.AccessKey {
 
 	if len(Config.InstanceId) < 16 || len(Config.SecretKey) < 32 {
 		return nil
 	}
 
-	return []iamapi.AccessKey{
+	return []hauth.AccessKey{
 		{
-			User:      init_sys_user,
-			AccessKey: Config.InstanceId[:8] + idhash.HashToHexString([]byte(Config.InstanceId), 8),
-			SecretKey: idhash.HashToBase64String(idhash.AlgSha256, []byte(Config.SecretKey), 40),
-			Bounds: []iamapi.AccessKeyBound{{
-				Name: "app/" + Config.InstanceId,
-			}},
+			User:   init_sys_user,
+			Id:     Config.InstanceId[:8] + idhash.HashToHexString([]byte(Config.InstanceId), 8),
+			Secret: idhash.HashToBase64String(idhash.AlgSha256, []byte(Config.SecretKey), 40),
+			Scopes: []*hauth.ScopeFilter{
+				{
+					Name:  "app",
+					Value: Config.InstanceId,
+				},
+			},
 			Description: "inPack Server",
 		},
 	}
