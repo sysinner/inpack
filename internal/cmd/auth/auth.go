@@ -19,8 +19,7 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"github.com/hooto/iam/iamapi"
-	"github.com/hooto/iam/iamclient"
+	"github.com/hooto/hauth/go/hauth/v1"
 	"github.com/sysinner/inpack/internal/ini"
 )
 
@@ -59,16 +58,24 @@ func Config() (*ini.ConfigIni, error) {
 	return cfg, nil
 }
 
-func AccessKeyAuth(repo string) (iamapi.AccessKeyAuth, error) {
+func AccessKeyAuth(repo string) (*hauth.AppCredential, error) {
 
 	if cfg == nil {
-		return iamapi.AccessKeyAuth{}, fmt.Errorf("No Config File Found")
+		return nil, fmt.Errorf("No Config File Found")
 	}
 
-	return iamclient.NewAccessKeyAuth(
-		cfg.Get(repo, "user").String(),
-		cfg.Get(repo, "access_key").String(),
-		cfg.Get(repo, "secret_key").String(),
-		"",
-	)
+	akId := cfg.Get(repo, "access_key_id").String()
+	if akId == "" {
+		return nil, fmt.Errorf("Repo or AccessKey ID Not Found")
+	}
+
+	akKey := cfg.Get(repo, "access_key_secret").String()
+	if akKey == "" {
+		return nil, fmt.Errorf("AccessKey Secret Not Found")
+	}
+
+	return hauth.NewAppCredential(&hauth.AccessKey{
+		Id:     akId,
+		Secret: akKey,
+	}), nil
 }

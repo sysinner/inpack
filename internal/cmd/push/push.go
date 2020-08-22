@@ -99,7 +99,7 @@ func Cmd() error {
 		)
 
 		hcp := httpclient.Get(url)
-		hcp.Header("Authorization", aka.Encode())
+		aka.SignHttpToken(hcp.Req, nil)
 		defer hcp.Close()
 
 		var rspkg types.TypeMeta
@@ -153,7 +153,7 @@ func Cmd() error {
 		defer hc.Close()
 
 		js, _ := json.Encode(req, "")
-		hc.Header("Authorization", aka.Encode())
+		aka.SignHttpToken(hc.Req, nil)
 		hc.Body(js)
 
 		var rsp types.TypeMeta

@@ -23,9 +23,10 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/hooto/hauth/go/hauth/v1"
 	"github.com/hooto/hlog4g/hlog"
+	iamdata "github.com/hooto/iam/data"
 	"github.com/hooto/iam/iamapi"
-	"github.com/hooto/iam/iamclient"
 	"github.com/lessos/lessgo/encoding/json"
 	"github.com/lessos/lessgo/locker"
 	"github.com/lessos/lessgo/types"
@@ -37,7 +38,7 @@ import (
 
 const (
 	pkg_spec_name       = ".inpack/inpack.json"
-	pkg_size_max  int64 = 100 * 1024 * 1024 // 100MB
+	pkg_size_max  int64 = 200 * 1024 * 1024 // 200MB
 )
 
 var (
@@ -67,26 +68,14 @@ func (c Pkg) CommitAction() {
 	}
 
 	//
-	aka, err := iamapi.AccessKeyAuthDecode(c.Session.AuthToken(""))
+	av, err := hauth.NewAppValidatorWithHttpRequest(c.Request.Request, iamdata.KeyMgr)
 	if err != nil {
-		set.Error = types.NewErrorMeta(iamapi.ErrCodeUnauthorized, "Unauthorized")
+		set.Error = types.NewErrorMeta(iamapi.ErrCodeUnauthorized, "Unauthorized "+err.Error())
 		return
 	}
 
-	app_aka, err := config.Config.AccessKeyAuth()
-	if err != nil {
+	if err := av.SignValid(nil); err != nil {
 		set.Error = types.NewErrorMeta(iamapi.ErrCodeInvalidArgument, err.Error())
-		return
-	}
-
-	aksess, err := iamclient.AccessKeySession(app_aka, aka)
-	if err != nil {
-		set.Error = types.NewErrorMeta(iamapi.ErrCodeInvalidArgument, err.Error())
-		return
-	}
-
-	if err := iamclient.AccessKeyAuthValid(aka, aksess.SecretKey); err != nil {
-		set.Error = types.NewErrorMeta(iamapi.ErrCodeUnauthorized, "Unauthorized")
 		return
 	}
 
@@ -105,10 +94,15 @@ func (c Pkg) CommitAction() {
 		return
 	}
 
-	if channel.Meta.User != aksess.User &&
-		(channel.Roles == nil || !channel.Roles.Write.MatchAny(aksess.Roles)) {
+	if channel.Meta.User != av.Key.User {
+		// (channel.Roles == nil || !channel.Roles.Write.MatchAny(av.Key.Roles)) {
 		set.Error = types.NewErrorMeta(iamapi.ErrCodeAccessDenied,
 			"AccessDenied to Channel ("+channel.Meta.Name+")")
+		return
+	}
+	if err := av.Allow(hauth.NewScopeFilter("app", config.Config.InstanceId)); err != nil {
+		set.Error = types.NewErrorMeta(iamapi.ErrCodeAccessDenied,
+			"AccessDenied to Scope(app : "+config.Config.InstanceId+")")
 		return
 	}
 
@@ -246,7 +240,7 @@ func (c Pkg) CommitAction() {
 		Meta: types.InnerObjectMeta{
 			ID:      pkg_id,
 			Name:    packBuild.Name,
-			User:    aksess.User,
+			User:    av.Key.User,
 			Created: types.MetaTimeNow(),
 			Updated: types.MetaTimeNow(),
 		},
@@ -273,7 +267,7 @@ func (c Pkg) CommitAction() {
 		prev_info = ipapi.PackInfo{
 			Meta: types.InnerObjectMeta{
 				Name:    packBuild.Name,
-				User:    aksess.User,
+				User:    av.Key.User,
 				Created: types.MetaTimeNow(),
 			},
 			LastVersion: packBuild.Version.Version,
@@ -315,7 +309,7 @@ func (c Pkg) CommitAction() {
 		}
 
 		if prev_info.Meta.User == "" {
-			prev_info.Meta.User = aksess.User
+			prev_info.Meta.User = av.Key.User
 		}
 
 	} else {
@@ -351,27 +345,14 @@ func (c Pkg) MultipartCommitAction() {
 		req.Channel = "beta"
 	}
 
-	//
-	aka, err := iamapi.AccessKeyAuthDecode(c.Session.AuthToken(""))
+	av, err := hauth.NewAppValidatorWithHttpRequest(c.Request.Request, iamdata.KeyMgr)
 	if err != nil {
-		set.Error = types.NewErrorMeta(iamapi.ErrCodeUnauthorized, "Unauthorized")
+		set.Error = types.NewErrorMeta(iamapi.ErrCodeUnauthorized, "Unauthorized "+err.Error())
 		return
 	}
 
-	app_aka, err := config.Config.AccessKeyAuth()
-	if err != nil {
+	if err := av.SignValid(nil); err != nil {
 		set.Error = types.NewErrorMeta(iamapi.ErrCodeInvalidArgument, err.Error())
-		return
-	}
-
-	aksess, err := iamclient.AccessKeySession(app_aka, aka)
-	if err != nil {
-		set.Error = types.NewErrorMeta(iamapi.ErrCodeInvalidArgument, err.Error())
-		return
-	}
-
-	if err := iamclient.AccessKeyAuthValid(aka, aksess.SecretKey); err != nil {
-		set.Error = types.NewErrorMeta(iamapi.ErrCodeUnauthorized, "Unauthorized")
 		return
 	}
 
@@ -390,10 +371,15 @@ func (c Pkg) MultipartCommitAction() {
 		return
 	}
 
-	if channel.Meta.User != aksess.User &&
-		(channel.Roles == nil || !channel.Roles.Write.MatchAny(aksess.Roles)) {
+	if channel.Meta.User != av.Key.User {
+		// (channel.Roles == nil || !channel.Roles.Write.MatchAny(ak.Key.Roles)) {
 		set.Error = types.NewErrorMeta(iamapi.ErrCodeAccessDenied,
 			"AccessDenied to Channel ("+channel.Meta.Name+")")
+		return
+	}
+	if err := av.Allow(hauth.NewScopeFilter("app", config.Config.InstanceId)); err != nil {
+		set.Error = types.NewErrorMeta(iamapi.ErrCodeAccessDenied,
+			"AccessDenied to Scope(app : "+config.Config.InstanceId+")")
 		return
 	}
 
@@ -567,7 +553,7 @@ func (c Pkg) MultipartCommitAction() {
 		Meta: types.InnerObjectMeta{
 			ID:      pkg_id,
 			Name:    packBuild.Name,
-			User:    aksess.User,
+			User:    av.Key.User,
 			Created: types.MetaTimeNow(),
 			Updated: types.MetaTimeNow(),
 		},
@@ -594,7 +580,7 @@ func (c Pkg) MultipartCommitAction() {
 		prev_info = ipapi.PackInfo{
 			Meta: types.InnerObjectMeta{
 				Name:    packBuild.Name,
-				User:    aksess.User,
+				User:    av.Key.User,
 				Created: types.MetaTimeNow(),
 			},
 			LastVersion: packBuild.Version.Version,
@@ -636,7 +622,7 @@ func (c Pkg) MultipartCommitAction() {
 		}
 
 		if prev_info.Meta.User == "" {
-			prev_info.Meta.User = aksess.User
+			prev_info.Meta.User = av.Key.User
 		}
 
 	} else {

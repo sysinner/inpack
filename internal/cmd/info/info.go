@@ -50,7 +50,7 @@ func List() error {
 	))
 	defer hc.Close()
 
-	hc.Header("Authorization", aka.Encode())
+	aka.SignHttpToken(hc.Req, nil)
 
 	var ls ipapi.PackInfoList
 	if err = hc.ReplyJson(&ls); err != nil {

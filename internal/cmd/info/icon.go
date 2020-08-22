@@ -112,7 +112,7 @@ func IconSet() error {
 	defer hc.Close()
 
 	js, _ := json.Encode(req, "")
-	hc.Header("Authorization", aka.Encode())
+	aka.SignHttpToken(hc.Req, nil)
 	hc.Body(js)
 
 	var rsp types.TypeMeta
