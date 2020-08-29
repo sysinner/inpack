@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	Data    kv2.Client
+	Data    kv2.ClientTable
 	Storage kv2.ClientFileObjectConnector
 )
 
@@ -77,21 +77,23 @@ func Setup() error {
 
 func setupDataConnect() error {
 
-	if config.Config.Data == nil {
-		return errors.New("no data connect options found")
+	if Data == nil {
+
+		if config.Config.Data == nil {
+			return errors.New("no data connect options found")
+		}
+
+		db, err := kvgo.Open(config.Config.Data)
+		if err != nil {
+			return err
+		}
+		Data = db.OpenTable("main")
 	}
 
-	db, err := kvgo.Open(config.Config.Data)
+	dbs, err := kvgo.NewFileObjectConn(Data)
 	if err != nil {
 		return err
 	}
-
-	dbs, err := kvgo.NewFileObjectConn(db, "main")
-	if err != nil {
-		return err
-	}
-
-	Data = db
 	Storage = dbs
 
 	return nil
