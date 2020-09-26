@@ -109,7 +109,17 @@ func Cmd() error {
 	dist := ""
 	arch := "x64"
 
-	{
+	if v, ok := hflag.ValueOK("dist"); ok {
+		switch v.String() {
+		case "linux":
+			dist = "linux"
+
+		default:
+			return fmt.Errorf("invalid --dist")
+		}
+	}
+
+	if dist == "" {
 		cmd, err := exec.LookPath("lsb_release")
 		if err != nil {
 			return fmt.Errorf("CMD: lsb_release is required")
@@ -130,8 +140,10 @@ func Cmd() error {
 			dist = "el"
 		} else if rs2[0] == "Debian" {
 			dist = "de"
+		} else if rs2[0] == "Ubuntu" {
+			dist = "ub"
 		} else {
-			return fmt.Errorf("OS: CentOS is required")
+			return fmt.Errorf("OS: CentOS/Debian/Ubuntu is required")
 		}
 
 		ver := strings.Split(rs2[1], ".")
@@ -142,8 +154,8 @@ func Cmd() error {
 		switch rs2[0] {
 
 		case "CentOS":
-			if ver[0] != "7" {
-				return fmt.Errorf("CentOS Version 7.x is required")
+			if ver[0] != "7" && ver[0] != "8" {
+				return fmt.Errorf("CentOS Version 7.x/8.x is required")
 			}
 			dist += ver[0]
 
@@ -427,6 +439,10 @@ Building
 
 		for k, v := range scriptParams {
 			build = strings.Replace(build, "{{."+k+"}}", v, -1)
+		}
+
+		if _, ok := hflag.ValueOK("show-build"); ok {
+			fmt.Printf(" BuildScript >>>\n%s\n<<<\n", build)
 		}
 
 		if err := _cmd(build); err != nil {

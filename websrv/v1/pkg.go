@@ -15,10 +15,12 @@
 package v1 // import "github.com/sysinner/inpack/websrv/v1"
 
 import (
+	"fmt"
 	"net/http"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hooto/httpsrv"
@@ -137,6 +139,79 @@ func (c Pkg) ListAction() {
 	ls.Kind = "PackList"
 }
 
+type pkgCacheList struct {
+	mu    sync.RWMutex
+	items map[string]*pkgCacheEntry
+}
+
+type pkgCacheVersion struct {
+	version types.Version
+	release types.Version
+	dist    string
+	arch    string
+}
+
+type pkgCacheEntry struct {
+	mu      sync.RWMutex
+	name    string
+	logId   uint64
+	items   []*pkgCacheVersion
+	imap    map[string]bool
+	updated int64
+}
+
+func (it *pkgCacheEntry) Find(vers, dist, arch string) *pkgCacheVersion {
+	var (
+		vr = types.Version(vers)
+		rs = []*pkgCacheVersion{}
+	)
+	for _, v := range it.items {
+		if vr.Compare(&v.version) > 0 {
+			continue
+		}
+		if v.dist != dist && (v.dist != "linux" && v.dist != "all") {
+			continue
+		}
+		if v.arch != arch && v.arch != "src" {
+			continue
+		}
+		rs = append(rs, v)
+	}
+	if len(rs) < 1 {
+		return nil
+	}
+	sort.Slice(rs, func(i, j int) bool {
+		k := rs[i].version.Compare(&rs[j].version)
+		if k == 0 {
+			return rs[i].release.Compare(&rs[j].release) > 0
+		}
+		return k > 0
+	})
+	return rs[0]
+}
+
+func (it *pkgCacheList) Entry(name string) *pkgCacheEntry {
+	it.mu.RLock()
+	defer it.mu.RUnlock()
+	p, ok := it.items[name]
+	if ok {
+		return p
+	}
+	p = &pkgCacheEntry{
+		name:  strings.ToLower(name),
+		logId: 0,
+		imap:  map[string]bool{},
+	}
+	it.items[name] = p
+	return p
+}
+
+var (
+	pkgCache = pkgCacheList{
+		items: map[string]*pkgCacheEntry{},
+	}
+)
+
 func (c Pkg) EntryAction() {
 
 	var set struct {
@@ -148,6 +223,7 @@ func (c Pkg) EntryAction() {
 	var (
 		id   = c.Params.Get("id")
 		name = c.Params.Get("name")
+		vers = c.Params.Get("version")
 	)
 
 	if id == "" && name == "" {
@@ -160,6 +236,50 @@ func (c Pkg) EntryAction() {
 			return
 		}
 
+		t := time.Now().Unix()
+		p := pkgCache.Entry(name)
+		if (p.updated + 10) < t {
+
+			// TODO
+			rs := data.Data.NewReader().KeyRangeSet(
+				ipapi.DataPackKey(fmt.Sprintf("%s-%sz", name, vers)),
+				ipapi.DataPackKey(fmt.Sprintf("%s-%s", name, vers)),
+			).ModeRevRangeSet(true).LimitNumSet(100).Query()
+
+			if !rs.OK() {
+				set.Error = types.NewErrorMeta("400", "Pack ID or Name Not Found")
+				return
+			}
+
+			p.mu.Lock()
+			for _, v := range rs.Items {
+				var item ipapi.Pack
+				if err := v.Decode(&item); err != nil {
+					continue
+				}
+
+				if _, ok := p.imap[item.Version.HashString()]; ok {
+					continue
+				}
+
+				p.items = append(p.items, &pkgCacheVersion{
+					version: types.Version(item.Version.Version),
+					release: types.Version(item.Version.Release),
+					dist:    item.Version.Dist,
+					arch:    item.Version.Arch,
+				})
+				p.imap[item.Version.HashString()] = true
+			}
+			p.mu.Unlock()
+		}
+
+		version := p.Find(vers, c.Params.Get("dist"), c.Params.Get("arch"))
+		if version == nil {
+			set.Error = types.NewErrorMeta("400", "Package not found")
+			return
+		}
+
+		/**
 		version := ipapi.PackVersion{
 			Version: types.Version(c.Params.Get("version")),
 			Release: types.Version(c.Params.Get("release")),
@@ -170,7 +290,13 @@ func (c Pkg) EntryAction() {
 			set.Error = types.NewErrorMeta("400", err.Error())
 			return
 		}
-		id = ipapi.PackFilenameKey(name, version)
+		*/
+		id = ipapi.PackFilenameKey(name, ipapi.PackVersion{
+			Version: version.version,
+			Release: version.release,
+			Dist:    version.dist,
+			Arch:    version.arch,
+		})
 	}
 
 	if id != "" {

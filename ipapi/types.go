@@ -31,7 +31,7 @@ var (
 	ChannelNameRe   = regexp.MustCompile("^[a-z0-9]{3,10}$")
 	ChannelVendorRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9-.]{2,49}$")
 	PackNameRe      = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9-_]{1,28}[a-zA-Z0-9]$")
-	VersionDistRe   = types.ArrayString([]string{"all", "el7"})
+	VersionDistRe   = types.ArrayString([]string{"all", "linux", "el7", "el8"})
 	VersionArchRe   = types.ArrayString([]string{"src", "x64"})
 )
 
@@ -130,6 +130,14 @@ func (it *PackVersion) Compare(cp PackVersion) int {
 		return 0
 	}
 	return 1
+}
+
+func (it *PackVersion) HashString() string {
+	return strings.ToLower(fmt.Sprintf("%s-%s.%s.%s",
+		it.Version,
+		it.Release,
+		it.Dist,
+		it.Arch))
 }
 
 type PackBuild struct {
