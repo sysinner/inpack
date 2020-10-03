@@ -284,7 +284,7 @@ func (c Pkg) CommitAction() {
 			return
 		}
 
-		switch packBuild.Version.Version.Compare(&prev_info.LastVersion) {
+		switch packBuild.Version.Version.Compare(prev_info.LastVersion) {
 		case 1:
 			prev_info.LastVersion = packBuild.Version.Version
 		}
@@ -597,7 +597,7 @@ func (c Pkg) MultipartCommitAction() {
 			return
 		}
 
-		switch packBuild.Version.Version.Compare(&prev_info.LastVersion) {
+		switch packBuild.Version.Version.Compare(prev_info.LastVersion) {
 		case 1:
 			prev_info.LastVersion = packBuild.Version.Version
 		}

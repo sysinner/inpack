@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hooto/hlog4g/hlog"
 	"github.com/hooto/httpsrv"
 	"github.com/hooto/iam/iamapi"
 	"github.com/hooto/iam/iamclient"
@@ -166,7 +167,7 @@ func (it *pkgCacheEntry) Find(vers, dist, arch string) *pkgCacheVersion {
 		rs = []*pkgCacheVersion{}
 	)
 	for _, v := range it.items {
-		if vr.Compare(&v.version) > 0 {
+		if vr.Compare(v.version) > 0 {
 			continue
 		}
 		if v.dist != dist && (v.dist != "linux" && v.dist != "all") {
@@ -181,9 +182,9 @@ func (it *pkgCacheEntry) Find(vers, dist, arch string) *pkgCacheVersion {
 		return nil
 	}
 	sort.Slice(rs, func(i, j int) bool {
-		k := rs[i].version.Compare(&rs[j].version)
+		k := rs[i].version.Compare(rs[j].version)
 		if k == 0 {
-			return rs[i].release.Compare(&rs[j].release) > 0
+			return rs[i].release.Compare(rs[j].release) > 0
 		}
 		return k > 0
 	})
@@ -246,6 +247,9 @@ func (c Pkg) EntryAction() {
 				ipapi.DataPackKey(fmt.Sprintf("%s-%s", name, vers)),
 			).ModeRevRangeSet(true).LimitNumSet(100).Query()
 
+			hlog.Printf("debug", "package entry find %s, ver %s, num %d",
+				name, vers, len(rs.Items))
+
 			if !rs.OK() {
 				set.Error = types.NewErrorMeta("400", "Pack ID or Name Not Found")
 				return
@@ -271,6 +275,8 @@ func (c Pkg) EntryAction() {
 				p.imap[item.Version.HashString()] = true
 			}
 			p.mu.Unlock()
+
+			p.updated = time.Now().Unix()
 		}
 
 		version := p.Find(vers, c.Params.Get("dist"), c.Params.Get("arch"))
@@ -281,8 +287,8 @@ func (c Pkg) EntryAction() {
 
 		/**
 		version := ipapi.PackVersion{
-			Version: types.Version(c.Params.Get("version")),
-			Release: types.Version(c.Params.Get("release")),
+			Version: string(c.Params.Get("version")),
+			Release: string(c.Params.Get("release")),
 			Dist:    c.Params.Get("dist"),
 			Arch:    c.Params.Get("arch"),
 		}

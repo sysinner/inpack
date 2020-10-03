@@ -91,7 +91,7 @@ func Cmd() error {
 		return err
 	}
 
-	{
+	if _, ok := hflag.ValueOK("overwrite"); !ok {
 		url := fmt.Sprintf(
 			"%s/ips/v1/pkg/entry?id=%s",
 			cfg.Get(arg_repo, "service_url").String(),
