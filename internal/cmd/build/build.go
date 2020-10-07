@@ -112,10 +112,20 @@ func Cmd() error {
 	if v, ok := hflag.ValueOK("dist"); ok {
 		switch v.String() {
 		case "linux":
-			dist = "linux"
+			dist = v.String()
 
 		default:
 			return fmt.Errorf("invalid --dist")
+		}
+	}
+
+	if v, ok := hflag.ValueOK("arch"); ok {
+		switch v.String() {
+		case "src", "x64":
+			arch = v.String()
+
+		default:
+			return fmt.Errorf("invalid --arch")
 		}
 	}
 
@@ -672,12 +682,12 @@ func _cmd(script string) error {
 
 	script = "set -e\nset -o pipefail\n" + script + "\nexit 0\n"
 
-	if out, err := exec.Command("bash", "-c", script).Output(); err != nil {
+	if out, err := exec.Command("bash", "-c", script).CombinedOutput(); err != nil {
 		scriptShow := ""
 		if hflag.Value("show_script").String() == "true" {
 			scriptShow = fmt.Sprintf(" Script >>> %s <<<", script)
 		}
-		return fmt.Errorf("Command Error (%s)\n Output %s\n%s\n",
+		return fmt.Errorf("Error %s\nMessage %s\n%s\n",
 			err.Error(), string(out), scriptShow)
 	}
 

@@ -192,8 +192,8 @@ func (it *pkgCacheEntry) Find(vers, dist, arch string) *pkgCacheVersion {
 }
 
 func (it *pkgCacheList) Entry(name string) *pkgCacheEntry {
-	it.mu.RLock()
-	defer it.mu.RUnlock()
+	it.mu.Lock()
+	defer it.mu.Unlock()
 	p, ok := it.items[name]
 	if ok {
 		return p
