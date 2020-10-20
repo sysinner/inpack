@@ -18,7 +18,6 @@ import (
 	"log"
 	"os"
 
-	cmd_bindata "github.com/sysinner/inpack/internal/cmd/bindata"
 	cmd_build "github.com/sysinner/inpack/internal/cmd/build"
 	cmd_info "github.com/sysinner/inpack/internal/cmd/info"
 	cmd_pack "github.com/sysinner/inpack/internal/cmd/packfile"
@@ -55,11 +54,6 @@ func main() {
 
 	case "packfile-list":
 		if err := cmd_pack.List(); err != nil {
-			log.Fatal(err)
-		}
-
-	case "bindata":
-		if err := cmd_bindata.Cmd(); err != nil {
 			log.Fatal(err)
 		}
 

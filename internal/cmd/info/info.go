@@ -33,6 +33,7 @@ var (
 )
 
 func List() error {
+
 	//
 	cfg, err = auth.Config()
 	if cfg == nil {
@@ -61,7 +62,7 @@ func List() error {
 	}
 
 	tbl := termtables.CreateTable()
-	tbl.AddHeaders("Name", "Last", "Num", "Updated")
+	tbl.AddHeaders("Name", "Last Version", "Num", "Updated")
 
 	fmt.Println("Found", len(ls.Items))
 	for _, v := range ls.Items {
@@ -69,7 +70,7 @@ func List() error {
 			v.Meta.Name,
 			v.LastVersion,
 			v.StatNum,
-			types.MetaTime(v.Meta.Updated).Format("2006-01-02 15:04"),
+			types.MetaTime(v.Meta.Updated).Format("2006-01-02"),
 		)
 	}
 	fmt.Println(tbl.Render())

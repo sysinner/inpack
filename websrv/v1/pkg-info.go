@@ -23,13 +23,14 @@ import (
 	"strings"
 
 	"github.com/eryx/imaging"
+	"github.com/hooto/hauth/go/hauth/v1"
 	"github.com/hooto/httpsrv"
+	iamdata "github.com/hooto/iam/data"
 	"github.com/hooto/iam/iamapi"
 	"github.com/hooto/iam/iamclient"
 	"github.com/lessos/lessgo/types"
 
 	"github.com/sysinner/inpack/ipapi"
-	"github.com/sysinner/inpack/server/config"
 	"github.com/sysinner/inpack/server/data"
 )
 
@@ -272,29 +273,16 @@ func (c PkgInfo) IconSetAction() {
 		return
 	}
 
-	{
-		aka, err := iamapi.AccessKeyAuthDecode(c.Session.AuthToken(""))
-		if err != nil {
-			set.Error = types.NewErrorMeta(iamapi.ErrCodeUnauthorized, "Unauthorized")
-			return
-		}
+	//
+	av, err := hauth.NewAppValidatorWithHttpRequest(c.Request.Request, iamdata.KeyMgr)
+	if err != nil {
+		set.Error = types.NewErrorMeta(iamapi.ErrCodeUnauthorized, "Unauthorized "+err.Error())
+		return
+	}
 
-		app_aka, err := config.Config.AccessKeyAuth()
-		if err != nil {
-			set.Error = types.NewErrorMeta(iamapi.ErrCodeInvalidArgument, err.Error())
-			return
-		}
-
-		aksess, err := iamclient.AccessKeySession(app_aka, aka)
-		if err != nil {
-			set.Error = types.NewErrorMeta(iamapi.ErrCodeInvalidArgument, err.Error())
-			return
-		}
-
-		if err := iamclient.AccessKeyAuthValid(aka, aksess.SecretKey); err != nil {
-			set.Error = types.NewErrorMeta(iamapi.ErrCodeUnauthorized, "Unauthorized")
-			return
-		}
+	if err := av.SignValid(nil); err != nil {
+		set.Error = types.NewErrorMeta(iamapi.ErrCodeInvalidArgument, err.Error())
+		return
 	}
 
 	var info ipapi.PackInfo
@@ -303,6 +291,12 @@ func (c PkgInfo) IconSetAction() {
 	}
 	if info.Meta.Name != req.Name {
 		set.Error = types.NewErrorMeta(types.ErrCodeNotFound, "Pack Not Found")
+		return
+	}
+
+	if info.Meta.User != av.Key.User {
+		set.Error = types.NewErrorMeta(iamapi.ErrCodeAccessDenied,
+			"AccessDenied")
 		return
 	}
 

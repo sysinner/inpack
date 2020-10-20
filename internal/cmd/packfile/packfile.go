@@ -78,7 +78,7 @@ func List() error {
 	}
 
 	tbl := termtables.CreateTable()
-	tbl.AddHeaders("Name", "Version", "Release", "Dist", "Arch", "Built")
+	tbl.AddHeaders("Name", "Version", "Release", "Dist", "Arch", "Updated")
 
 	fmt.Println("Found", len(ls.Items))
 	for _, v := range ls.Items {
@@ -88,7 +88,7 @@ func List() error {
 			v.Version.Release,
 			v.Version.Dist,
 			v.Version.Arch,
-			types.MetaTime(v.Built).Format("2006-01-02 15:04"),
+			types.MetaTime(v.Built).Format("2006-01-02"),
 		)
 	}
 	fmt.Println(tbl.Render())
