@@ -49,7 +49,7 @@ func (c Channel) ListAction() {
 				if c.us.UserName == "sysadmin" ||
 					c.us.UserName == set.Meta.User ||
 					(set.Roles != nil && set.Roles.Read.MatchAny(c.us.Roles)) {
-					sets.Items = append(sets.Items, set)
+					sets.Items = append(sets.Items, &set)
 				}
 			}
 		}

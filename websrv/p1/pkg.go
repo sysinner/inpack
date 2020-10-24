@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hooto/httpsrv"
@@ -27,6 +28,75 @@ import (
 	"github.com/sysinner/inpack/ipapi"
 	"github.com/sysinner/inpack/server/data"
 )
+
+var (
+	pkgMu  sync.RWMutex
+	pkgTTL = int64(600)
+	items  = map[string]*pkgFeed{}
+)
+
+type pkgFeed struct {
+	updated int64
+	items   []*ipapi.Pack
+}
+
+func pkgRefresh(pkgname string) *pkgFeed {
+
+	tn := time.Now().Unix()
+
+	pkgMu.Lock()
+	defer pkgMu.Unlock()
+
+	feed, ok := items[pkgname]
+
+	if ok && (feed.updated+pkgTTL) > tn {
+		return feed
+	}
+	if !ok {
+		feed = &pkgFeed{}
+		items[pkgname] = feed
+	}
+
+	var (
+		offset = ipapi.DataPackKey(pkgname)
+		items  []*ipapi.Pack
+	)
+
+	rs := data.Data.NewReader(nil).ModeRevRangeSet(true).
+		KeyRangeSet(append(offset, 0xff), offset).LimitNumSet(100).Query()
+
+	for _, v := range rs.Items {
+
+		var item ipapi.Pack
+		if err := v.Decode(&item); err != nil {
+			continue
+		}
+
+		items = append(items, &item)
+	}
+
+	feed.updated = tn
+
+	if len(items) > 0 {
+
+		sort.Slice(items, func(i, j int) bool {
+			return items[i].Meta.Updated > items[j].Meta.Updated
+		})
+
+		for _, item := range items {
+			item.Meta.Created = 0
+			item.Meta.Updated = 0
+			item.Built = 0
+		}
+
+		feed.items = items
+
+	} else {
+		feed.updated -= (pkgTTL - 10)
+	}
+
+	return feed
+}
 
 type Pkg struct {
 	*httpsrv.Controller
@@ -79,25 +149,13 @@ func (c Pkg) ListAction() {
 	}
 
 	var (
-		offset = ipapi.DataPackKey(q_name)
-		cutset = ipapi.DataPackKey(q_name)
+		feed = pkgRefresh(q_name)
 	)
 
-	rs := data.Data.NewReader(nil).KeyRangeSet(offset, cutset).LimitNumSet(1000).Query()
-	if !rs.OK() {
-		ls.Error = types.NewErrorMeta("500", rs.Message)
-		return
-	}
-
-	for _, entry := range rs.Items {
+	for _, set := range feed.items {
 
 		if len(ls.Items) >= limit {
-			// TOPO return 0
-		}
-
-		var set ipapi.Pack
-		if err := entry.Decode(&set); err != nil {
-			continue
+			break
 		}
 
 		if q_name != "" && q_name != set.Meta.Name {
@@ -119,14 +177,6 @@ func (c Pkg) ListAction() {
 		ls.Items = append(ls.Items, set)
 	}
 
-	sort.Slice(ls.Items, func(i, j int) bool {
-		return ls.Items[i].Meta.Updated > ls.Items[j].Meta.Updated
-	})
-
-	if len(ls.Items) > limit {
-		ls.Items = ls.Items[:limit]
-	}
-
 	ls.Kind = "PackList"
 }
 
@@ -139,47 +189,19 @@ func (c Pkg) EntryAction() {
 	defer c.RenderJson(&set)
 
 	var (
-		id   = c.Params.Get("id")
 		name = c.Params.Get("name")
 	)
 
-	if id == "" && name == "" {
-		set.Error = types.NewErrorMeta("400", "Pack ID or Name Not Found")
+	if !ipapi.PackNameRe.MatchString(name) {
+		set.Error = types.NewErrorMeta("400", "Invalid Pack Name")
 		return
-	} else if name != "" {
-
-		if !ipapi.PackNameRe.MatchString(name) {
-			set.Error = types.NewErrorMeta("400", "Invalid Pack Name")
-			return
-		}
-
-		version := ipapi.PackVersion{
-			Version: types.Version(c.Params.Get("version")),
-			Release: types.Version(c.Params.Get("release")),
-			Dist:    c.Params.Get("dist"),
-			Arch:    c.Params.Get("arch"),
-		}
-		if err := version.Valid(); err != nil {
-			set.Error = types.NewErrorMeta("400", err.Error())
-			return
-		}
-		id = ipapi.PackFilenameKey(name, version)
 	}
 
-	if id != "" {
-
-		if rs := data.Data.NewReader(ipapi.DataPackKey(id)).Query(); rs.OK() {
-			rs.Decode(&set.Pack)
-		} else if name != "" {
-			// TODO
-		} else {
-
-		}
-	}
-
-	if set.Meta.Name == "" {
+	feed := pkgRefresh(name)
+	if len(feed.items) == 0 {
 		set.Error = types.NewErrorMeta("404", "Pack Not Found")
 	} else {
+		set.Pack = *feed.items[0]
 		set.Kind = "Pack"
 	}
 }

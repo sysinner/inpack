@@ -208,7 +208,7 @@ func (it *Pack) Valid() error {
 
 type PackList struct {
 	types.TypeMeta `json:",inline" toml:",inline"`
-	Items          []Pack `json:"items,omitempty" toml:"items,omitempty"`
+	Items          []*Pack `json:"items,omitempty" toml:"items,omitempty"`
 }
 
 type PackInfo struct {
@@ -277,7 +277,7 @@ type PackChannelRoles struct {
 
 type PackChannelList struct {
 	types.TypeMeta `json:",inline" toml:",inline"`
-	Items          []PackChannel `json:"items,omitempty" toml:"items,omitempty"`
+	Items          []*PackChannel `json:"items,omitempty" toml:"items,omitempty"`
 }
 
 type PackCommit struct {

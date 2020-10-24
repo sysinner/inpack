@@ -15,6 +15,11 @@
 package p1
 
 import (
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/hooto/httpsrv"
 	"github.com/lessos/lessgo/types"
 
@@ -27,31 +32,70 @@ type Channel struct {
 }
 
 var (
-	allow_roles = []uint32{100, 101}
+	allowRoles     = []uint32{100, 101}
+	channelMu      sync.RWMutex
+	channelTTL     = int64(600)
+	channelList    ipapi.PackChannelList
+	channelUpdated int64
 )
+
+func channelRefresh() {
+
+	tn := time.Now().Unix()
+
+	if (channelUpdated + channelTTL) > tn {
+		return
+	}
+
+	channelMu.Lock()
+	defer channelMu.Unlock()
+
+	var (
+		rs = data.Data.NewReader(nil).KeyRangeSet(
+			ipapi.DataChannelKey(""), ipapi.DataChannelKey("")).
+			LimitNumSet(100).Query()
+		items []*ipapi.PackChannel
+	)
+
+	for _, v := range rs.Items {
+
+		var item ipapi.PackChannel
+		if err := v.Decode(&item); err != nil {
+			continue
+		}
+
+		items = append(items, &item)
+	}
+
+	channelUpdated = tn
+
+	if len(items) > 0 {
+
+		sort.Slice(items, func(i, j int) bool {
+			return strings.Compare(items[i].Meta.Name, items[j].Meta.Name) > 0
+		})
+
+		channelList.Items = items
+
+	} else {
+		channelUpdated -= (channelTTL - 10)
+	}
+}
 
 func (c Channel) ListAction() {
 
-	sets := ipapi.PackChannelList{}
-	defer c.RenderJson(&sets)
+	channelRefresh()
 
-	if rs := data.Data.NewReader(nil).KeyRangeSet(
-		ipapi.DataChannelKey(""), ipapi.DataChannelKey("")).
-		LimitNumSet(100).Query(); rs.OK() {
+	rep := ipapi.PackChannelList{}
 
-		for _, entry := range rs.Items {
-
-			var set ipapi.PackChannel
-			if err := entry.Decode(&set); err == nil {
-				if set.Roles != nil && set.Roles.Read.MatchAny(allow_roles) {
-					set.Roles = nil
-					sets.Items = append(sets.Items, set)
-				}
-			}
+	for _, v := range channelList.Items {
+		if v.Roles.Read.MatchAny(allowRoles) {
+			rep.Items = append(rep.Items, v)
 		}
 	}
 
-	sets.Kind = "PackChannelList"
+	rep.Kind = "PackChannelList"
+	c.RenderJson(rep)
 }
 
 func (c Channel) EntryAction() {
@@ -65,13 +109,17 @@ func (c Channel) EntryAction() {
 		return
 	}
 
-	if rs := data.Data.NewReader(ipapi.DataChannelKey(name)).Query(); !rs.OK() {
-		set.Error = types.NewErrorMeta("404", "Channel Not Found")
-		return
-	} else if err := rs.Decode(&set); err != nil {
-		set.Error = types.NewErrorMeta("404", "Channel Not Found")
-		return
+	channelRefresh()
+	for _, v := range channelList.Items {
+		if v.Meta.Name == name {
+			set = *v
+			break
+		}
 	}
 
-	set.Kind = "PackChannel"
+	if set.Meta.Name != name {
+		set.Error = types.NewErrorMeta("404", "Channel Not Found")
+	} else {
+		set.Kind = "PackChannel"
+	}
 }

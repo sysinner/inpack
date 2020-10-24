@@ -126,7 +126,7 @@ func (c Pkg) ListAction() {
 			set.OpPerm = ipapi.OpPermRead
 		}
 
-		ls.Items = append(ls.Items, set)
+		ls.Items = append(ls.Items, &set)
 	}
 
 	sort.Slice(ls.Items, func(i, j int) bool {
