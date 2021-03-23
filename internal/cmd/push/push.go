@@ -71,7 +71,7 @@ func Cmd() error {
 	//
 
 	// check if uploaded
-	spec, err := exec.Command("/bin/tar", "-Jxvf", arg_pack_path, "-O", pkg_spec_name).Output()
+	spec, err := exec.Command("tar", "-Jxvf", arg_pack_path, "-O", pkg_spec_name).Output()
 	if err != nil {
 		return err
 	}
