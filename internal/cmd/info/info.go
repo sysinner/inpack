@@ -17,8 +17,10 @@ package info // import "github.com/sysinner/inpack/internal/cmd/info"
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 
 	"github.com/apcera/termtables"
+	"github.com/hooto/hflag4g/hflag"
 	"github.com/lessos/lessgo/net/httpclient"
 	"github.com/lessos/lessgo/types"
 
@@ -38,6 +40,10 @@ func List() error {
 	cfg, err = auth.Config()
 	if cfg == nil {
 		return err
+	}
+
+	if v, ok := hflag.ValueOK("repo"); ok {
+		arg_repo = filepath.Clean(v.String())
 	}
 
 	aka, err := auth.AccessKeyAuth(arg_repo)

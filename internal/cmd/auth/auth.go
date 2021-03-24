@@ -66,7 +66,7 @@ func AccessKeyAuth(repo string) (*hauth.AppCredential, error) {
 
 	akId := cfg.Get(repo, "access_key_id").String()
 	if akId == "" {
-		return nil, fmt.Errorf("Repo or AccessKey ID Not Found")
+		return nil, fmt.Errorf("Repo (%s) or AccessKey ID Not Found", repo)
 	}
 
 	akKey := cfg.Get(repo, "access_key_secret").String()
