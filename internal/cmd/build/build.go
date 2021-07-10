@@ -56,6 +56,7 @@ var (
 		".git",
 		".gitignore",
 		".gitmodules",
+		".DS_Store",
 	}
 	htmlcp_config = `{
   "collapseWhitespace": true,
