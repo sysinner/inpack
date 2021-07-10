@@ -47,7 +47,7 @@ var (
 	packed_spec_dir   = ".inpack"
 	packed_spec       = packed_spec_dir + "/inpack.json"
 	jscp              = "uglifyjs %s -m -o %s"
-	csscp             = "cleancss --skip-rebase %s -o %s"
+	csscp             = "cleancss %s -o %s"
 	htmlcp            = "html-minifier -c /tmp/html-minifier.conf %s -o %s"
 	pngcp             = "optipng -o7 %s -out %s"
 	filecp            = "cp -rpf %s %s"
