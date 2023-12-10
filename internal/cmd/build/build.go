@@ -150,14 +150,14 @@ func Cmd() error {
 			return err
 		}
 
-		if rs2[0] == "CentOS" || rs2[0] == "RockyLinux" {
+		if rs2[0] == "CentOS" || rs2[0] == "RockyLinux" || rs2[0] == "Rocky" {
 			dist = "el"
 		} else if rs2[0] == "Debian" {
 			dist = "de"
 		} else if rs2[0] == "Ubuntu" {
 			dist = "ub"
 		} else {
-			return fmt.Errorf("OS: CentOS/Debian/Ubuntu is required")
+			return fmt.Errorf("OS: CentOS/Rocky/Debian/Ubuntu is required")
 		}
 
 		ver := strings.Split(rs2[1], ".")
@@ -167,7 +167,7 @@ func Cmd() error {
 
 		switch rs2[0] {
 
-		case "CentOS", "RockyLinux":
+		case "CentOS", "RockyLinux", "Rocky":
 			if ver[0] != "7" && ver[0] != "8" && ver[0] != "9" {
 				return fmt.Errorf("RHEL Version 7.x/8.x is required")
 			}
