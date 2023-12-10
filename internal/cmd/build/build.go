@@ -31,7 +31,7 @@ import (
 	"github.com/sysinner/inpack/ipapi"
 )
 
-// RHEL, CentOS
+// RHEL, CentOS, RockyLinux
 //
 //	yum install npm optipng upx
 //
@@ -150,7 +150,7 @@ func Cmd() error {
 			return err
 		}
 
-		if rs2[0] == "CentOS" {
+		if rs2[0] == "CentOS" || rs2[0] == "RockyLinux" {
 			dist = "el"
 		} else if rs2[0] == "Debian" {
 			dist = "de"
@@ -167,9 +167,9 @@ func Cmd() error {
 
 		switch rs2[0] {
 
-		case "CentOS":
-			if ver[0] != "7" && ver[0] != "8" {
-				return fmt.Errorf("CentOS Version 7.x/8.x is required")
+		case "CentOS", "RockyLinux":
+			if ver[0] != "7" && ver[0] != "8" && ver[0] != "9" {
+				return fmt.Errorf("RHEL Version 7.x/8.x is required")
 			}
 			dist += ver[0]
 
