@@ -32,9 +32,12 @@ import (
 )
 
 // RHEL, CentOS
-//   yum install npm optipng upx
+//
+//	yum install npm optipng upx
+//
 // Debian, Ubuntu
-//   sudo apt-get install npm optipng upx
+//
+//	sudo apt-get install npm optipng upx
 //
 // sudo npm install -g uglify-js clean-css-cli html-minifier esformatter js-beautify
 var (
@@ -199,7 +202,7 @@ func Cmd() error {
 	}
 
 	for _, v := range specFiles {
-		if err = htoml.DecodeFromFile(&specItem, v); err == nil {
+		if err = htoml.DecodeFromFile(v, &specItem); err == nil {
 			specFile = v
 			break
 		} else if !os.IsNotExist(err) {

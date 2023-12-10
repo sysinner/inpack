@@ -70,7 +70,7 @@ func Setup(prefix string) error {
 
 	Prefix = filepath.Clean(prefix)
 
-	if err := htoml.DecodeFromFile(&Config, Prefix+"/etc/inpack.conf"); err != nil {
+	if err := htoml.DecodeFromFile(Prefix+"/etc/inpack.conf", &Config); err != nil {
 
 		if !os.IsNotExist(err) {
 			return err
