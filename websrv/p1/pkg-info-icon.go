@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/eryx/imaging"
+	"github.com/disintegration/imaging"
 
 	"github.com/sysinner/inpack/ipapi"
 	"github.com/sysinner/inpack/server/data"
@@ -97,9 +97,9 @@ func (c PkgInfo) IconAction() {
 	c.AutoRender = false
 
 	var (
-		name      = c.Params.Get("name")
-		icon_type = c.Params.Get("type")
-		icon_size = int(c.Params.Int64("size"))
+		name      = c.Params.Value("name")
+		icon_type = c.Params.Value("type")
+		icon_size = int(c.Params.IntValue("size"))
 	)
 
 	if !ipapi.PackNameRe.MatchString(name) {

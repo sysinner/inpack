@@ -22,7 +22,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/eryx/imaging"
+	"github.com/disintegration/imaging"
 	"github.com/hooto/hauth/go/hauth/v1"
 	"github.com/hooto/httpsrv"
 	iamdata "github.com/hooto/iam/data"
@@ -55,8 +55,8 @@ func (c PkgInfo) ListAction() {
 	defer c.RenderJson(&sets)
 
 	var (
-		q_text  = c.Params.Get("q")
-		q_group = c.Params.Get("group")
+		q_text  = c.Params.Value("q")
+		q_group = c.Params.Value("group")
 		limit   = 200
 	)
 
@@ -110,7 +110,7 @@ func (c PkgInfo) EntryAction() {
 	set := ipapi.PackInfo{}
 	defer c.RenderJson(&set)
 
-	name := c.Params.Get("name")
+	name := c.Params.Value("name")
 	if !ipapi.PackNameRe.MatchString(name) {
 		set.Error = types.NewErrorMeta("404", "Invalid Pack Name")
 		return
@@ -182,9 +182,9 @@ func (c PkgInfo) IconAction() {
 	c.AutoRender = false
 
 	var (
-		name      = c.Params.Get("name")
-		icon_type = c.Params.Get("type")
-		icon_size = int(c.Params.Int64("size"))
+		name      = c.Params.Value("name")
+		icon_type = c.Params.Value("type")
+		icon_size = int(c.Params.IntValue("size"))
 	)
 
 	if !ipapi.PackNameRe.MatchString(name) {

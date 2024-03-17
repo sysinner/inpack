@@ -21,26 +21,18 @@ import (
 	"github.com/sysinner/inpack/server/config"
 )
 
-func NewModule(prefix string) httpsrv.Module {
+func NewModule(prefix string) *httpsrv.Module {
 
 	if prefix == "" {
 		prefix = config.Prefix
 	}
 	prefix = filepath.Clean(prefix)
 
-	module := httpsrv.NewModule("ui")
+	mod := httpsrv.NewModule()
 
-	module.RouteSet(httpsrv.Route{
-		Type:       httpsrv.RouteTypeStatic,
-		Path:       "~",
-		StaticPath: prefix + "/webui",
-	})
+	mod.RegisterFileServer("/~", prefix+"/webui", nil)
 
-	module.RouteSet(httpsrv.Route{
-		Type:       httpsrv.RouteTypeStatic,
-		Path:       "-",
-		StaticPath: prefix + "/webui/ips/tpl",
-	})
+	mod.RegisterFileServer("/-", prefix+"/webui/ips/tpl", nil)
 
-	return module
+	return mod
 }

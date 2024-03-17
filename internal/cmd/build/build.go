@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package build // import "github.com/sysinner/inpack/internal/cmd/build"
+package build
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,12 +28,16 @@ import (
 	"github.com/hooto/htoml4g/htoml"
 	"github.com/lessos/lessgo/encoding/json"
 	"github.com/lessos/lessgo/types"
+	"github.com/tdewolff/minify/v2"
+	"github.com/tdewolff/minify/v2/css"
+	"github.com/tdewolff/minify/v2/html"
+	"github.com/tdewolff/minify/v2/js"
 
 	"github.com/sysinner/inpack/internal/ini"
 	"github.com/sysinner/inpack/ipapi"
 )
 
-// RHEL, CentOS, RockyLinux
+// RHEL, Rocky, CentOS
 //
 //	yum install npm optipng upx
 //
@@ -80,9 +86,12 @@ var (
 }`
 )
 
+type minifyFunction func(w, r *bytes.Buffer) error
+
 func Cmd() error {
 
-	if runtime.GOARCH != "amd64" {
+	if runtime.GOARCH != "amd64" &&
+		runtime.GOARCH != "arm64" {
 		return fmt.Errorf("CPU: amd64 or x86_64 is required")
 	}
 
@@ -150,14 +159,14 @@ func Cmd() error {
 			return err
 		}
 
-		if rs2[0] == "CentOS" || rs2[0] == "RockyLinux" || rs2[0] == "Rocky" {
+		if rs2[0] == "CentOS" || rs2[0] == "Rocky" || rs2[0] == "Rocky" {
 			dist = "el"
 		} else if rs2[0] == "Debian" {
 			dist = "de"
 		} else if rs2[0] == "Ubuntu" {
 			dist = "ub"
 		} else {
-			return fmt.Errorf("OS: CentOS/Rocky/Debian/Ubuntu is required")
+			return fmt.Errorf("OS: Rocky/CentOS/Debian/Ubuntu is required")
 		}
 
 		ver := strings.Split(rs2[1], ".")
@@ -167,9 +176,15 @@ func Cmd() error {
 
 		switch rs2[0] {
 
-		case "CentOS", "RockyLinux", "Rocky":
-			if ver[0] != "7" && ver[0] != "8" && ver[0] != "9" {
-				return fmt.Errorf("RHEL Version 7.x/8.x is required")
+		case "Rocky":
+			if ver[0] != "8" && ver[0] != "9" {
+				return fmt.Errorf("Rocky Version 8.x/9.0 is required")
+			}
+			dist += ver[0]
+
+		case "CentOS":
+			if ver[0] != "7" && ver[0] != "8" {
+				return fmt.Errorf("CentOS Version 7.x/8.x is required")
 			}
 			dist += ver[0]
 
@@ -391,12 +406,14 @@ Building
 	os.Mkdir(build_tempdir, 0755)
 
 	subfiles := lookupFiles(specItem.Files.JsCompress, ".js")
-	if err := _compress(subfiles, jscp); err != nil {
+	// if err := _compress(subfiles, jscp); err != nil {
+	if err := minifyFilter(subfiles, jsMinify); err != nil {
 		return fmt.Errorf("JsCompress %s", err.Error())
 	}
 
 	subfiles = lookupFiles(specItem.Files.CssCompress, ".css")
-	if err := _compress(subfiles, csscp); err != nil {
+	// if err := _compress(subfiles, csscp); err != nil {
+	if err := minifyFilter(subfiles, cssMinify); err != nil {
 		return fmt.Errorf("CssCompress %s", err.Error())
 	}
 
@@ -415,12 +432,14 @@ Building
 		}
 
 		subfiles = lookupFiles(specItem.Files.HtmlCompress, ".html")
-		if err := _compress(subfiles, htmlcp); err != nil {
+		// if err := _compress(subfiles, htmlcp); err != nil {
+		if err := minifyFilter(subfiles, htmlMinify); err != nil {
 			return fmt.Errorf("HtmlCompress %s", err.Error())
 		}
 
 		subfiles = lookupFiles(specItem.Files.HtmlCompress, ".tpl")
-		if err := _compress(subfiles, htmlcp); err != nil {
+		// if err := _compress(subfiles, htmlcp); err != nil {
+		if err := minifyFilter(subfiles, htmlMinify); err != nil {
 			return fmt.Errorf("HtmlCompress %s", err.Error())
 		}
 	}
@@ -691,9 +710,92 @@ func _cmd(script string) error {
 		if hflag.Value("show_script").String() == "true" {
 			scriptShow = fmt.Sprintf(" Script >>> %s <<<", script)
 		}
-		return fmt.Errorf("Error %s\nMessage %s\n%s\n",
-			err.Error(), string(out), scriptShow)
+		return fmt.Errorf("Error %s\nMessage %s\n%s\nEXEC %s\n",
+			err.Error(), string(out), scriptShow, script)
 	}
 
 	return nil
+}
+
+func minifyFilter(ls types.ArrayString, fn minifyFunction) error {
+
+	mini1 := func(dst, src string) error {
+
+		st, err := os.Stat(src)
+		if err != nil {
+			return err
+		}
+
+		fp, err := os.Open(src)
+		if err != nil {
+			return err
+		}
+		defer fp.Close()
+
+		bs, err := io.ReadAll(fp)
+		if err == nil {
+			var (
+				w bytes.Buffer
+				r = bytes.NewBuffer(bs)
+			)
+			if err = fn(&w, r); err == nil {
+
+				fp2, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE, st.Mode())
+				if err != nil {
+					return err
+				}
+				defer fp2.Close()
+
+				fp2.Seek(0, 0)
+				fp2.Truncate(0)
+
+				if _, err = fp2.Write(w.Bytes()); err == nil {
+					err = fp2.Sync()
+				}
+
+				if err == nil {
+					fmt.Println("  FILE OK", dst)
+					return nil
+				}
+			}
+		}
+
+		if _, err = exec.Command("cp", "-rpf", src, dst).Output(); err != nil {
+			os.Remove(dst)
+		} else {
+			fmt.Println("  FILE ER-OK", src)
+		}
+		return err
+	}
+
+	for _, src := range ls {
+
+		dst := fmt.Sprintf("%s/%s", build_tempdir, src)
+
+		if _, err := os.Stat(dst); err == nil {
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+			return err
+		}
+
+		if err := mini1(dst, src); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func jsMinify(w, r *bytes.Buffer) error {
+	return js.Minify(nil, w, r, nil)
+}
+
+func cssMinify(w, r *bytes.Buffer) error {
+	return css.Minify(minify.New(), w, r, nil)
+}
+
+func htmlMinify(w, r *bytes.Buffer) error {
+	return html.Minify(minify.New(), w, r, nil)
 }

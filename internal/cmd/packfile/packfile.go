@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/apcera/termtables"
+	"github.com/gosuri/uitable"
 	"github.com/hooto/hflag4g/hflag"
 	"github.com/lessos/lessgo/net/httpclient"
 	"github.com/lessos/lessgo/types"
@@ -77,8 +77,8 @@ func List() error {
 		return errors.New(ls.Error.Message)
 	}
 
-	tbl := termtables.CreateTable()
-	tbl.AddHeaders("Name", "Version", "Release", "Dist", "Arch", "Updated")
+	tbl := uitable.New()
+	tbl.AddRow("Name", "Version", "Release", "Dist", "Arch", "Updated")
 
 	fmt.Println("Found", len(ls.Items))
 	for _, v := range ls.Items {
@@ -91,7 +91,7 @@ func List() error {
 			types.MetaTime(v.Built).Format("2006-01-02"),
 		)
 	}
-	fmt.Println(tbl.Render())
+	fmt.Println(tbl.String())
 
 	return nil
 }

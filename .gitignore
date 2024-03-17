@@ -8,3 +8,5 @@ etc/*
 webui/lessui
 webui/bs
 webui/purecss
+*.zip
+go.sum

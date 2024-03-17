@@ -15,6 +15,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -22,6 +23,10 @@ import (
 	cmd_info "github.com/sysinner/inpack/internal/cmd/info"
 	cmd_pack "github.com/sysinner/inpack/internal/cmd/packfile"
 	cmd_push "github.com/sysinner/inpack/internal/cmd/push"
+)
+
+var (
+	version = "0.9.0"
 )
 
 func main() {
@@ -56,6 +61,9 @@ func main() {
 		if err := cmd_pack.List(); err != nil {
 			log.Fatal(err)
 		}
+
+	case "version":
+		fmt.Println("Version", version)
 
 	default:
 		log.Fatalf("No Command Found (%s)", os.Args[1])

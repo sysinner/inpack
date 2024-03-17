@@ -142,7 +142,7 @@ func (c Pkg) CommitAction() {
 	}
 
 	// Export package definition information, checking
-	spec, err := exec.Command("/bin/tar", "-Jxvf", tmp_file, "-O", pkg_spec_name).Output()
+	spec, err := exec.Command("tar", "-Jxvf", tmp_file, "-O", pkg_spec_name).Output()
 	if err != nil {
 		set.Error = types.NewErrorMeta("400", err.Error())
 		os.Remove(tmp_file)
@@ -458,6 +458,7 @@ func (c Pkg) MultipartCommitAction() {
 		}
 		return
 	}
+	hlog.Printf("info", "pkg save tmp %s ok", tmp_file)
 
 	if req.BlockOffset+fsize < req.Size {
 		set.Kind = "PackMultipartCommit"
@@ -465,7 +466,7 @@ func (c Pkg) MultipartCommitAction() {
 	}
 
 	// Export package definition information, checking
-	spec, err := exec.Command("/bin/tar", "-Jxvf", tmp_file, "-O", pkg_spec_name).Output()
+	spec, err := exec.Command("tar", "-Jxvf", tmp_file, "-O", pkg_spec_name).Output()
 	if err != nil {
 		set.Error = types.NewErrorMeta("400", err.Error())
 		os.Remove(tmp_file)
@@ -545,8 +546,10 @@ func (c Pkg) MultipartCommitAction() {
 	hlog.Printf("info", "%s to %s", tmp_file, path)
 	if rs := data.Storage.FoFilePut(tmp_file, path); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", rs.String())
+		hlog.Printf("info", "pkg put storage %s fail %s", path, rs.String())
 		return
 	}
+	hlog.Printf("info", "pkg put storage %s ok", path)
 
 	// package file
 	pack := ipapi.Pack{

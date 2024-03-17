@@ -32,14 +32,14 @@ func (c Fs) IndexAction() {
 
 	c.AutoRender = false
 
-	file := filepath.Clean(c.Request.RequestPath)
-	if !strings.HasPrefix(file, "v1/fs/") {
+	file := filepath.Clean(c.Request.UrlPath())
+	if !strings.HasPrefix(file, "/v1/fs/") {
 		c.RenderError(400, "Bad Request")
 		return
 	}
 
 	// TODO auth
-	fop, err := data.Storage.FoFileOpen(file[len("v1/fs"):])
+	fop, err := data.Storage.FoFileOpen(file[len("/v1/fs"):])
 	if err != nil {
 		c.RenderError(404, "File Not Found")
 		return

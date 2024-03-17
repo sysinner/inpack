@@ -103,7 +103,7 @@ func (c Channel) EntryAction() {
 	var set ipapi.PackChannel
 	defer c.RenderJson(&set)
 
-	name := c.Params.Get("name")
+	name := c.Params.Value("name")
 	if !ipapi.ChannelNameRe.MatchString(name) {
 		set.Error = types.NewErrorMeta("400", "Invalid Channel Name")
 		return

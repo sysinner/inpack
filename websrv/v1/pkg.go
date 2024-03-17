@@ -41,15 +41,15 @@ func (c Pkg) DlAction() {
 
 	c.AutoRender = false
 
-	file := filepath.Clean(c.Request.RequestPath)
+	file := filepath.Clean(c.Request.UrlPath())
 
-	if !strings.HasPrefix(file, "ips/v1/pkg/dl/") {
+	if !strings.HasPrefix(file, "/ips/v1/pkg/dl/") {
 		c.RenderError(400, "Bad Request")
 		return
 	}
 
 	// TODO auth
-	fop, err := data.Storage.FoFileOpen("/ips" + file[len("ips/v1/pkg/dl"):])
+	fop, err := data.Storage.FoFileOpen("/ips" + file[len("/ips/v1/pkg/dl"):])
 	if err != nil {
 		c.RenderError(404, "File Not Found")
 		return
@@ -67,10 +67,10 @@ func (c Pkg) ListAction() {
 	defer c.RenderJson(&ls)
 
 	var (
-		q_name    = c.Params.Get("name")
-		q_channel = c.Params.Get("channel")
-		q_text    = c.Params.Get("q")
-		limit     = int(c.Params.Int64("limit"))
+		q_name    = c.Params.Value("name")
+		q_channel = c.Params.Value("channel")
+		q_text    = c.Params.Value("q")
+		limit     = int(c.Params.IntValue("limit"))
 	)
 
 	if !ipapi.PackNameRe.MatchString(q_name) {
@@ -222,9 +222,9 @@ func (c Pkg) EntryAction() {
 	defer c.RenderJson(&set)
 
 	var (
-		id   = c.Params.Get("id")
-		name = c.Params.Get("name")
-		vers = c.Params.Get("version")
+		id   = c.Params.Value("id")
+		name = c.Params.Value("name")
+		vers = c.Params.Value("version")
 	)
 
 	if id == "" && name == "" {
@@ -279,7 +279,7 @@ func (c Pkg) EntryAction() {
 			p.updated = time.Now().Unix()
 		}
 
-		version := p.Find(vers, c.Params.Get("dist"), c.Params.Get("arch"))
+		version := p.Find(vers, c.Params.Value("dist"), c.Params.Value("arch"))
 		if version == nil {
 			set.Error = types.NewErrorMeta("400", "Package not found")
 			return
@@ -287,10 +287,10 @@ func (c Pkg) EntryAction() {
 
 		/**
 		version := ipapi.PackVersion{
-			Version: string(c.Params.Get("version")),
-			Release: string(c.Params.Get("release")),
-			Dist:    c.Params.Get("dist"),
-			Arch:    c.Params.Get("arch"),
+			Version: string(c.Params.Value("version")),
+			Release: string(c.Params.Value("release")),
+			Dist:    c.Params.Value("dist"),
+			Arch:    c.Params.Value("arch"),
 		}
 		if err := version.Valid(); err != nil {
 			set.Error = types.NewErrorMeta("400", err.Error())

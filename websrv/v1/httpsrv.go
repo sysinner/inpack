@@ -18,16 +18,26 @@ import (
 	"github.com/hooto/httpsrv"
 )
 
-func NewModule() httpsrv.Module {
+func NewModule() *httpsrv.Module {
 
-	module := httpsrv.NewModule("v1")
+	mod := httpsrv.NewModule()
 
-	module.ControllerRegister(new(Pkg))
-	module.ControllerRegister(new(PkgInfo))
-	module.ControllerRegister(new(Channel))
-	module.ControllerRegister(new(Group))
-	module.ControllerRegister(new(Fs))
-	module.ControllerRegister(new(Status))
+	mod.RegisterController(
+		new(Pkg),
+		new(PkgInfo),
+		new(Channel),
+		new(Group),
+		new(Fs),
+		new(Status))
 
-	return module
+	return mod
+}
+
+func NewStaticModule(path string) *httpsrv.Module {
+
+	mod := httpsrv.NewModule()
+
+	mod.RegisterFileServer("/", path, nil)
+
+	return mod
 }
