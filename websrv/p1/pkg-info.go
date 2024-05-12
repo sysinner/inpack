@@ -46,15 +46,15 @@ func pkgInfoRefresh() {
 	defer pkgInfoMu.Unlock()
 
 	var (
-		rs = data.Data.NewReader(nil).KeyRangeSet(
-			ipapi.DataInfoKey(""), ipapi.DataInfoKey("")).LimitNumSet(10000).Query()
+		rs = data.Data.NewRanger(
+			ipapi.DataInfoKey(""), ipapi.DataInfoKey("")).SetLimit(10000).Exec()
 		items = []*ipapi.PackInfo{}
 	)
 
 	for _, v := range rs.Items {
 
 		var item ipapi.PackInfo
-		if err := v.Decode(&item); err != nil {
+		if err := v.JsonDecode(&item); err != nil {
 			continue
 		}
 

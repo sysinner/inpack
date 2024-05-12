@@ -39,7 +39,7 @@ func (c Fs) IndexAction() {
 	}
 
 	// TODO auth
-	fop, err := data.Storage.FoFileOpen(file[len("/v1/fs"):])
+	fop, err := data.Storage.Open(file[len("/v1/fs"):])
 	if err != nil {
 		c.RenderError(404, "File Not Found")
 		return

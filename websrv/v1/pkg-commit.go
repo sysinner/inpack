@@ -168,7 +168,7 @@ func (c Pkg) CommitAction() {
 	//
 	pkg_id := ipapi.PackFilenameKey(packBuild.Name, packBuild.Version)
 
-	rs := data.Data.NewReader(ipapi.DataPackKey(pkg_id)).Query()
+	rs := data.Data.NewReader(ipapi.DataPackKey(pkg_id)).Exec()
 	if !rs.NotFound() {
 		set.Error = types.NewErrorMeta("400", "Pack already exists")
 		return
@@ -230,7 +230,7 @@ func (c Pkg) CommitAction() {
 	// 	return
 	// }
 
-	if rs := data.Storage.FoFilePut(tmp_file, path); !rs.OK() {
+	if rs := data.Storage.Put(path, tmp_file); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", rs.String())
 		return
 	}
@@ -255,14 +255,14 @@ func (c Pkg) CommitAction() {
 		pack.Groups.Set(v)
 	}
 
-	if rs := data.Data.NewWriter(ipapi.DataPackKey(pkg_id), pack).Commit(); !rs.OK() {
+	if rs := data.Data.NewWriter(ipapi.DataPackKey(pkg_id), pack).Exec(); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Can not write to database")
 		return
 	}
 
 	var prev_info ipapi.PackInfo
 	name_lower := strings.ToLower(packBuild.Name)
-	if rs := data.Data.NewReader(ipapi.DataInfoKey(name_lower)).Query(); rs.NotFound() {
+	if rs := data.Data.NewReader(ipapi.DataInfoKey(name_lower)).Exec(); rs.NotFound() {
 
 		prev_info = ipapi.PackInfo{
 			Meta: types.InnerObjectMeta{
@@ -279,7 +279,7 @@ func (c Pkg) CommitAction() {
 
 	} else if rs.OK() {
 
-		if err := rs.Decode(&prev_info); err != nil {
+		if err := rs.Item().JsonDecode(&prev_info); err != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error")
 			return
 		}
@@ -319,14 +319,14 @@ func (c Pkg) CommitAction() {
 
 	prev_info.Meta.Updated = types.MetaTimeNow()
 
-	if rs := data.Data.NewWriter(ipapi.DataInfoKey(name_lower), prev_info).Commit(); !rs.OK() {
+	if rs := data.Data.NewWriter(ipapi.DataInfoKey(name_lower), prev_info).Exec(); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Server Error")
 		return
 	}
 
 	channel.StatNum++
 	channel.StatSize += pack.Size
-	data.Data.NewWriter(ipapi.DataChannelKey(channel.Meta.Name), channel).Commit()
+	data.Data.NewWriter(ipapi.DataChannelKey(channel.Meta.Name), channel).Exec()
 
 	set.Kind = "PackCommit"
 }
@@ -425,7 +425,7 @@ func (c Pkg) MultipartCommitAction() {
 	pkg_id := ipapi.PackFilenameKey(req.Name, req.Version)
 	pkg_name := ipapi.PackFilename(req.Name, req.Version)
 
-	rs := data.Data.NewReader(ipapi.DataPackKey(pkg_id)).Query()
+	rs := data.Data.NewReader(ipapi.DataPackKey(pkg_id)).Exec()
 	if !rs.NotFound() {
 		set.Error = types.NewErrorMeta("400", "Pack already exists")
 		return
@@ -544,8 +544,8 @@ func (c Pkg) MultipartCommitAction() {
 	sum_check := ipm_entry_sync_sumcheck(tmp_file)
 
 	hlog.Printf("info", "%s to %s", tmp_file, path)
-	if rs := data.Storage.FoFilePut(tmp_file, path); !rs.OK() {
-		set.Error = types.NewErrorMeta("500", rs.String())
+	if rs := data.Storage.Put(path, tmp_file); !rs.OK() {
+		set.Error = types.NewErrorMeta("500", rs.ErrorMessage())
 		hlog.Printf("info", "pkg put storage %s fail %s", path, rs.String())
 		return
 	}
@@ -571,14 +571,14 @@ func (c Pkg) MultipartCommitAction() {
 		pack.Groups.Set(v)
 	}
 
-	if rs = data.Data.NewWriter(ipapi.DataPackKey(pkg_id), pack).Commit(); !rs.OK() {
+	if rs = data.Data.NewWriter(ipapi.DataPackKey(pkg_id), pack).Exec(); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Can not write to database")
 		return
 	}
 
 	var prev_info ipapi.PackInfo
 	name_lower := strings.ToLower(packBuild.Name)
-	if rs := data.Data.NewReader(ipapi.DataInfoKey(name_lower)).Query(); rs.NotFound() {
+	if rs := data.Data.NewReader(ipapi.DataInfoKey(name_lower)).Exec(); rs.NotFound() {
 
 		prev_info = ipapi.PackInfo{
 			Meta: types.InnerObjectMeta{
@@ -595,7 +595,7 @@ func (c Pkg) MultipartCommitAction() {
 
 	} else if rs.OK() {
 
-		if err := rs.Decode(&prev_info); err != nil {
+		if err := rs.Item().JsonDecode(&prev_info); err != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error")
 			return
 		}
@@ -635,14 +635,14 @@ func (c Pkg) MultipartCommitAction() {
 
 	prev_info.Meta.Updated = types.MetaTimeNow()
 
-	if rs := data.Data.NewWriter(ipapi.DataInfoKey(name_lower), prev_info).Commit(); !rs.OK() {
+	if rs := data.Data.NewWriter(ipapi.DataInfoKey(name_lower), prev_info).Exec(); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Server Error")
 		return
 	}
 
 	channel.StatNum++
 	channel.StatSize += pack.Size
-	data.Data.NewWriter(ipapi.DataChannelKey(channel.Meta.Name), channel).Commit()
+	data.Data.NewWriter(ipapi.DataChannelKey(channel.Meta.Name), channel).Exec()
 
 	set.Kind = "PackMultipartCommit"
 }

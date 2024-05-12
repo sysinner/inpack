@@ -65,8 +65,8 @@ func main() {
 		iamclient.ServiceUrl = config.Config.IamServiceUrl
 	}
 	//
-	httpsrv.GlobalService.ModuleRegister("/ips/v1", v1.NewModule())
-	httpsrv.GlobalService.ModuleRegister("/ips", ui.NewModule(""))
+	httpsrv.DefaultService.HandleModule("/ips/v1", v1.NewModule())
+	httpsrv.DefaultService.HandleModule("/ips", ui.NewModule(""))
 
 	//
 	if config.Config.PprofHttpPort > 0 {
@@ -74,9 +74,9 @@ func main() {
 	}
 
 	// http service
-	httpsrv.GlobalService.Config.HttpPort = config.Config.HttpPort
+	httpsrv.DefaultService.Config.HttpPort = config.Config.HttpPort
 
 	//
 	hlog.Print("info", "running")
-	httpsrv.GlobalService.Start()
+	httpsrv.DefaultService.Start()
 }

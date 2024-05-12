@@ -27,7 +27,7 @@ import (
 	"github.com/lessos/lessgo/encoding/json"
 	"github.com/lessos/lessgo/types"
 	iox_utils "github.com/lynkdb/iomix/utils"
-	"github.com/lynkdb/kvgo"
+	kvclient "github.com/lynkdb/kvgo/v2/pkg/client"
 )
 
 var (
@@ -42,12 +42,12 @@ var (
 
 type ConfigCommon struct {
 	filepath      string
-	InstanceId    string       `json:"instance_id" toml:"instance_id"`
-	SecretKey     string       `json:"secret_key" toml:"secret_key"`
-	HttpPort      uint16       `json:"http_port,omitempty" toml:"http_port,omitempty"`
-	Data          *kvgo.Config `json:"data,omitempty" toml:"data,omitempty"`
-	IamServiceUrl string       `json:"iam_service_url,omitempty" toml:"iam_service_url,omitempty"`
-	PprofHttpPort uint16       `json:"pprof_http_port,omitempty" toml:"pprof_http_port,omitempty"`
+	InstanceId    string           `json:"instance_id" toml:"instance_id"`
+	SecretKey     string           `json:"secret_key" toml:"secret_key"`
+	HttpPort      uint16           `json:"http_port,omitempty" toml:"http_port,omitempty"`
+	Database      *kvclient.Config `json:"database,omitempty" toml:"database,omitempty"`
+	IamServiceUrl string           `json:"iam_service_url,omitempty" toml:"iam_service_url,omitempty"`
+	PprofHttpPort uint16           `json:"pprof_http_port,omitempty" toml:"pprof_http_port,omitempty"`
 }
 
 func (cfg *ConfigCommon) Sync() error {
@@ -84,11 +84,11 @@ func Setup(prefix string) error {
 
 	Config.filepath = Prefix + "/etc/inpack.conf"
 
-	if Config.Data == nil {
-
-		Config.Data = &kvgo.Config{}
-
-		Config.Data.Storage.DataDirectory = filepath.Clean(Prefix + "/var/db_inpack")
+	if Config.Database == nil {
+		Config.Database = &kvclient.Config{
+			Addr:     "127.0.0.1:9566",
+			Database: "inpack",
+		}
 	}
 
 	if len(Config.InstanceId) < 16 {

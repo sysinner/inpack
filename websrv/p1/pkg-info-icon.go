@@ -71,8 +71,8 @@ func pkgInfoIconRefresh(name, typ string) *pkgInfoIcon {
 	}
 
 	var icon ipapi.PackInfoIcon
-	if rs := data.Data.NewReader([]byte(key)).Query(); rs.OK() {
-		rs.Decode(&icon)
+	if rs := data.Data.NewReader([]byte(key)).Exec(); rs.OK() {
+		rs.Item().JsonDecode(&icon)
 		if len(icon.Data) > 10 {
 			if bs, err := base64.StdEncoding.DecodeString(icon.Data); err == nil && len(bs) > 10 {
 				item.icon = &icon

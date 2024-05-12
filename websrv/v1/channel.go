@@ -39,13 +39,13 @@ func (c Channel) ListAction() {
 	sets := ipapi.PackChannelList{}
 	defer c.RenderJson(&sets)
 
-	if rs := data.Data.NewReader(nil).KeyRangeSet(
-		ipapi.DataChannelKey(""), ipapi.DataChannelKey("")).LimitNumSet(100).Query(); rs.OK() {
+	if rs := data.Data.NewRanger(
+		ipapi.DataChannelKey(""), ipapi.DataChannelKey("")).SetLimit(100).Exec(); rs.OK() {
 
 		for _, entry := range rs.Items {
 
 			var set ipapi.PackChannel
-			if err := entry.Decode(&set); err == nil {
+			if err := entry.JsonDecode(&set); err == nil {
 				if c.us.UserName == "sysadmin" ||
 					c.us.UserName == set.Meta.User ||
 					(set.Roles != nil && set.Roles.Read.MatchAny(c.us.Roles)) {
@@ -69,13 +69,13 @@ func (c Channel) EntryAction() {
 		return
 	}
 
-	rs := data.Data.NewReader(ipapi.DataChannelKey(name)).Query()
+	rs := data.Data.NewReader(ipapi.DataChannelKey(name)).Exec()
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("404", "Channel Not Found")
 		return
 	}
 
-	if err := rs.Decode(&set); err != nil {
+	if err := rs.Item().JsonDecode(&set); err != nil {
 		set.Error = types.NewErrorMeta("404", "Channel Not Found")
 		return
 	}
@@ -108,11 +108,11 @@ func (c Channel) SetAction() {
 		return
 	}
 
-	if rs := data.Data.NewReader(ipapi.DataChannelKey(set.Meta.Name)).Query(); rs.OK() {
+	if rs := data.Data.NewReader(ipapi.DataChannelKey(set.Meta.Name)).Exec(); rs.OK() {
 
 		var prev ipapi.PackChannel
 
-		if err := rs.Decode(&prev); err != nil {
+		if err := rs.Item().JsonDecode(&prev); err != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error "+err.Error())
 			return
 		}
@@ -144,8 +144,8 @@ func (c Channel) SetAction() {
 	set.Meta.Updated = types.MetaTimeNow()
 	set.Kind = ""
 
-	if rs := data.Data.NewWriter(ipapi.DataChannelKey(set.Meta.Name), set).Commit(); !rs.OK() {
-		set.Error = types.NewErrorMeta("500", "Can not write to database: "+rs.Message)
+	if rs := data.Data.NewWriter(ipapi.DataChannelKey(set.Meta.Name), set).Exec(); !rs.OK() {
+		set.Error = types.NewErrorMeta("500", "Can not write to database: "+rs.ErrorMessage())
 		return
 	}
 
@@ -168,13 +168,13 @@ func (c Channel) DeleteAction() {
 		return
 	}
 
-	rs := data.Data.NewReader(ipapi.DataChannelKey(name)).Query()
+	rs := data.Data.NewReader(ipapi.DataChannelKey(name)).Exec()
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("404", "Channel Not Found")
 		return
 	}
 
-	if err := rs.Decode(&set); err != nil {
+	if err := rs.Item().JsonDecode(&set); err != nil {
 		set.Error = types.NewErrorMeta("404", "Channel Not Found")
 		return
 	}
@@ -184,8 +184,7 @@ func (c Channel) DeleteAction() {
 		return
 	}
 
-	if rs := data.Data.NewWriter(ipapi.DataChannelKey(name), nil).
-		ModeDeleteSet(true).Commit(); !rs.OK() {
+	if rs := data.Data.NewDeleter(ipapi.DataChannelKey(name)).Exec(); !rs.OK() {
 		set.Error = types.NewErrorMeta("500", "Server Error")
 		return
 	}

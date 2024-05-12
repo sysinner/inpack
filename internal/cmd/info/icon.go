@@ -120,7 +120,7 @@ func IconSet() error {
 		return err
 	}
 	if rsp.Error != nil {
-		return errors.New(rsp.Error.Message)
+		return errors.New(rsp.Error.ErrorMessage())
 	}
 
 	fmt.Println("OK")

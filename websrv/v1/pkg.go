@@ -49,7 +49,7 @@ func (c Pkg) DlAction() {
 	}
 
 	// TODO auth
-	fop, err := data.Storage.FoFileOpen("/ips" + file[len("/ips/v1/pkg/dl"):])
+	fop, err := data.Storage.Open("/ips" + file[len("/ips/v1/pkg/dl"):])
 	if err != nil {
 		c.RenderError(404, "File Not Found")
 		return
@@ -84,10 +84,10 @@ func (c Pkg) ListAction() {
 		limit = 200
 	}
 
-	rs := data.Data.NewReader(nil).KeyRangeSet(
-		ipapi.DataPackKey(""), ipapi.DataPackKey("")).LimitNumSet(1000).Query()
+	rs := data.Data.NewRanger(
+		ipapi.DataPackKey(""), ipapi.DataPackKey("")).SetLimit(1000).Exec()
 	if !rs.OK() {
-		ls.Error = types.NewErrorMeta("500", rs.Message)
+		ls.Error = types.NewErrorMeta("500", rs.ErrorMessage())
 		return
 	}
 
@@ -100,7 +100,7 @@ func (c Pkg) ListAction() {
 		}
 
 		var set ipapi.Pack
-		if err := entry.Decode(&set); err != nil {
+		if err := entry.JsonDecode(&set); err != nil {
 			continue
 		}
 
@@ -242,10 +242,10 @@ func (c Pkg) EntryAction() {
 		if (p.updated + 10) < t {
 
 			// TODO
-			rs := data.Data.NewReader().KeyRangeSet(
-				ipapi.DataPackKey(fmt.Sprintf("%s-%sz", name, vers)),
+			rs := data.Data.NewRanger(
 				ipapi.DataPackKey(fmt.Sprintf("%s-%s", name, vers)),
-			).ModeRevRangeSet(true).LimitNumSet(100).Query()
+				ipapi.DataPackKey(fmt.Sprintf("%s-%sz", name, vers)),
+			).SetRevert(true).SetLimit(100).Exec()
 
 			hlog.Printf("debug", "package entry find %s, ver %s, num %d",
 				name, vers, len(rs.Items))
@@ -258,7 +258,7 @@ func (c Pkg) EntryAction() {
 			p.mu.Lock()
 			for _, v := range rs.Items {
 				var item ipapi.Pack
-				if err := v.Decode(&item); err != nil {
+				if err := v.JsonDecode(&item); err != nil {
 					continue
 				}
 
@@ -307,8 +307,8 @@ func (c Pkg) EntryAction() {
 
 	if id != "" {
 
-		if rs := data.Data.NewReader(ipapi.DataPackKey(id)).Query(); rs.OK() {
-			rs.Decode(&set.Pack)
+		if rs := data.Data.NewReader(ipapi.DataPackKey(id)).Exec(); rs.OK() {
+			rs.Item().JsonDecode(&set.Pack)
 		} else if name != "" {
 			// TODO
 		} else {
@@ -342,14 +342,14 @@ func (c Pkg) SetAction() {
 		return
 	}
 
-	rs := data.Data.NewReader(ipapi.DataPackKey(set.Meta.ID)).Query()
+	rs := data.Data.NewReader(ipapi.DataPackKey(set.Meta.ID)).Exec()
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("400", "No Pack Found")
 		return
 	}
 
 	var prev ipapi.Pack
-	if err := rs.Decode(&prev); err != nil {
+	if err := rs.Item().JsonDecode(&prev); err != nil {
 		set.Error = types.NewErrorMeta("500", "Server Error 1")
 		return
 	}
@@ -373,8 +373,8 @@ func (c Pkg) SetAction() {
 	if ipapi.OpPermAllow(set.OpPerm, ipapi.OpPermOff) &&
 		!ipapi.OpPermAllow(prev.OpPerm, ipapi.OpPermOff) {
 
-		if rs := data.Data.NewReader(ipapi.DataChannelKey(set.Channel)).Query(); !rs.OK() ||
-			rs.Decode(&setChannel) != nil {
+		if rs := data.Data.NewReader(ipapi.DataChannelKey(set.Channel)).Exec(); !rs.OK() ||
+			rs.Item().JsonDecode(&setChannel) != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error 2")
 			return
 		}
@@ -389,8 +389,8 @@ func (c Pkg) SetAction() {
 			setChannel.StatSize -= prev.Size
 		} else {
 
-			if rs := data.Data.NewReader(ipapi.DataChannelKey(prev.Channel)).Query(); !rs.OK() ||
-				rs.Decode(&preChannel) != nil {
+			if rs := data.Data.NewReader(ipapi.DataChannelKey(prev.Channel)).Exec(); !rs.OK() ||
+				rs.Item().JsonDecode(&preChannel) != nil {
 				set.Error = types.NewErrorMeta("500", "Server Error 3")
 				return
 			}
@@ -404,8 +404,8 @@ func (c Pkg) SetAction() {
 		var info ipapi.PackInfo
 		name_lower := strings.ToLower(prev.Meta.Name)
 
-		if rs := data.Data.NewReader(ipapi.DataInfoKey(name_lower)).Query(); !rs.OK() ||
-			rs.Decode(&info) != nil {
+		if rs := data.Data.NewReader(ipapi.DataInfoKey(name_lower)).Exec(); !rs.OK() ||
+			rs.Item().JsonDecode(&info) != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error 3.1")
 			return
 		}
@@ -422,21 +422,21 @@ func (c Pkg) SetAction() {
 		info.StatNumOff++
 		info.StatSizeOff += prev.Size
 
-		if rs := data.Data.NewWriter(ipapi.DataInfoKey(name_lower), info).Commit(); !rs.OK() {
+		if rs := data.Data.NewWriter(ipapi.DataInfoKey(name_lower), info).Exec(); !rs.OK() {
 			set.Error = types.NewErrorMeta("500", "Server Error 3.1")
 			return
 		}
 
 	} else if prev.Channel != set.Channel {
 
-		if rs := data.Data.NewReader(ipapi.DataChannelKey(set.Channel)).Query(); !rs.OK() ||
-			rs.Decode(&setChannel) != nil {
+		if rs := data.Data.NewReader(ipapi.DataChannelKey(set.Channel)).Exec(); !rs.OK() ||
+			rs.Item().JsonDecode(&setChannel) != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error 4")
 			return
 		}
 
-		if rs := data.Data.NewReader(ipapi.DataChannelKey(prev.Channel)).Query(); !rs.OK() ||
-			rs.Decode(&preChannel) != nil {
+		if rs := data.Data.NewReader(ipapi.DataChannelKey(prev.Channel)).Exec(); !rs.OK() ||
+			rs.Item().JsonDecode(&preChannel) != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error 5")
 			return
 		}
@@ -460,7 +460,7 @@ func (c Pkg) SetAction() {
 			setChannel.StatSize = 0
 		}
 
-		data.Data.NewWriter(ipapi.DataChannelKey(setChannel.Meta.Name), setChannel).Commit()
+		data.Data.NewWriter(ipapi.DataChannelKey(setChannel.Meta.Name), setChannel).Exec()
 	}
 
 	if preChannel.Meta.Name != "" {
@@ -473,11 +473,11 @@ func (c Pkg) SetAction() {
 			preChannel.StatSize = 0
 		}
 
-		data.Data.NewWriter(ipapi.DataChannelKey(preChannel.Meta.Name), preChannel).Commit()
+		data.Data.NewWriter(ipapi.DataChannelKey(preChannel.Meta.Name), preChannel).Exec()
 	}
 
 	prev.Meta.Updated = types.MetaTimeNow()
-	data.Data.NewWriter(ipapi.DataPackKey(set.Meta.ID), prev).Commit()
+	data.Data.NewWriter(ipapi.DataPackKey(set.Meta.ID), prev).Exec()
 
 	set.Kind = "Pack"
 }
@@ -486,15 +486,15 @@ func channelList() []ipapi.PackChannel {
 
 	sets := []ipapi.PackChannel{}
 
-	rs := data.Data.NewReader(nil).KeyRangeSet(
-		ipapi.DataChannelKey(""), ipapi.DataChannelKey("")).LimitNumSet(100).Query()
+	rs := data.Data.NewRanger(
+		ipapi.DataChannelKey(""), ipapi.DataChannelKey("")).SetLimit(100).Exec()
 	if !rs.OK() {
 		return sets
 	}
 
 	for _, entry := range rs.Items {
 		var set ipapi.PackChannel
-		if err := entry.Decode(&set); err == nil {
+		if err := entry.JsonDecode(&set); err == nil {
 			sets = append(sets, set)
 		}
 	}

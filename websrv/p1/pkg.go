@@ -62,13 +62,12 @@ func pkgRefresh(pkgname string) *pkgFeed {
 		items  []*ipapi.Pack
 	)
 
-	rs := data.Data.NewReader(nil).ModeRevRangeSet(true).
-		KeyRangeSet(append(offset, 0xff), offset).LimitNumSet(100).Query()
-
+	rs := data.Data.NewRanger(offset, append(offset, 0xff)).SetRevert(true).
+		SetLimit(100).Exec()
 	for _, v := range rs.Items {
 
 		var item ipapi.Pack
-		if err := v.Decode(&item); err != nil {
+		if err := v.JsonDecode(&item); err != nil {
 			continue
 		}
 
@@ -113,7 +112,7 @@ func (c Pkg) DlAction() {
 		return
 	}
 
-	fop, err := data.Storage.FoFileOpen("/ips" + file[len("/ips/p1/pkg/dl"):])
+	fop, err := data.Storage.Open("/ips" + file[len("/ips/p1/pkg/dl"):])
 	if err != nil {
 		c.RenderError(404, "File Not Found")
 		return

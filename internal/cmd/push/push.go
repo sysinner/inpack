@@ -163,7 +163,7 @@ func Cmd() error {
 			break
 		}
 		if rsp.Error != nil {
-			fmt.Printf(" ERR %s: %s\n", packBuild.Name, rsp.Error.Message)
+			fmt.Printf(" ERR %s: %s\n", packBuild.Name, rsp.Error.ErrorMessage())
 			break
 		}
 

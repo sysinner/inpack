@@ -51,16 +51,16 @@ func channelRefresh() {
 	defer channelMu.Unlock()
 
 	var (
-		rs = data.Data.NewReader(nil).KeyRangeSet(
+		rs = data.Data.NewRanger(
 			ipapi.DataChannelKey(""), ipapi.DataChannelKey("")).
-			LimitNumSet(100).Query()
+			SetLimit(100).Exec()
 		items []*ipapi.PackChannel
 	)
 
 	for _, v := range rs.Items {
 
 		var item ipapi.PackChannel
-		if err := v.Decode(&item); err != nil {
+		if err := v.JsonDecode(&item); err != nil {
 			continue
 		}
 

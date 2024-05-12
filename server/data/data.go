@@ -18,16 +18,16 @@ import (
 	"errors"
 
 	"github.com/lessos/lessgo/types"
-	"github.com/lynkdb/kvgo"
-	kv2 "github.com/lynkdb/kvspec/v2/go/kvspec"
+	"github.com/lynkdb/kvgo/v2/pkg/kvapi"
+	"github.com/lynkdb/kvgo/v2/pkg/object"
 
 	"github.com/sysinner/inpack/ipapi"
 	"github.com/sysinner/inpack/server/config"
 )
 
 var (
-	Data    kv2.ClientTable
-	Storage kv2.ClientFileObjectConnector
+	Data    kvapi.Client
+	Storage object.ObjectClient
 )
 
 func Setup() error {
@@ -67,8 +67,8 @@ func Setup() error {
 	}
 	for _, v := range def_channels {
 		if rs := Data.NewWriter(ipapi.DataChannelKey(v.Meta.Name), v).
-			ModeCreateSet(true).Commit(); !rs.OK() {
-			return errors.New("Data/Channel init error")
+			SetCreateOnly(true).Exec(); !rs.OK() {
+			return errors.New("Data/Channel init error " + rs.ErrorMessage())
 		}
 	}
 
@@ -79,22 +79,23 @@ func setupDataConnect() error {
 
 	if Data == nil {
 
-		if config.Config.Data == nil {
-			return errors.New("no data connect options found")
+		// v2
+		if config.Config.Database == nil {
+			return errors.New("database not setup")
 		}
 
-		db, err := kvgo.Open(config.Config.Data)
-		if err != nil {
+		if c, err := config.Config.Database.NewClient(); err != nil {
 			return err
+		} else {
+			Data = c
 		}
-		Data = db.OpenTable("main")
 	}
 
-	dbs, err := kvgo.NewFileObjectConn(Data)
-	if err != nil {
+	if c, err := object.NewObjectClient(Data); err != nil {
 		return err
+	} else {
+		Storage = c
 	}
-	Storage = dbs
 
 	return nil
 }

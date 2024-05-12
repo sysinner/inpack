@@ -60,8 +60,8 @@ func (c PkgInfo) ListAction() {
 		limit   = 200
 	)
 
-	rs := data.Data.NewReader(nil).KeyRangeSet(
-		ipapi.DataInfoKey(""), ipapi.DataInfoKey("")).LimitNumSet(10000).Query()
+	rs := data.Data.NewRanger(
+		ipapi.DataInfoKey(""), ipapi.DataInfoKey("")).SetLimit(10000).Exec()
 	if !rs.OK() {
 		sets.Error = types.NewErrorMeta("500", "Server Error")
 		return
@@ -76,7 +76,7 @@ func (c PkgInfo) ListAction() {
 		}
 
 		var set ipapi.PackInfo
-		if err := entry.Decode(&set); err != nil {
+		if err := entry.JsonDecode(&set); err != nil {
 			continue
 		}
 
@@ -116,13 +116,13 @@ func (c PkgInfo) EntryAction() {
 		return
 	}
 
-	rs := data.Data.NewReader(ipapi.DataInfoKey(name)).Query()
+	rs := data.Data.NewReader(ipapi.DataInfoKey(name)).Exec()
 	if !rs.OK() {
 		set.Error = types.NewErrorMeta("404", "PackInfo Not Found")
 		return
 	}
 
-	if err := rs.Decode(&set); err != nil {
+	if err := rs.Item().JsonDecode(&set); err != nil {
 		set.Error = types.NewErrorMeta("404", "PackInfo Not Found")
 		return
 	}
@@ -145,14 +145,14 @@ func (c PkgInfo) SetAction() {
 		return
 	}
 
-	if rs := data.Data.NewReader(ipapi.DataInfoKey(set.Meta.Name)).Query(); !rs.OK() {
+	if rs := data.Data.NewReader(ipapi.DataInfoKey(set.Meta.Name)).Exec(); !rs.OK() {
 		set.Error = types.NewErrorMeta("400", "PackInfo Not Found")
 		return
 	} else {
 
 		var prev ipapi.PackInfo
 
-		if err := rs.Decode(&prev); err != nil {
+		if err := rs.Item().JsonDecode(&prev); err != nil {
 			set.Error = types.NewErrorMeta("500", "Server Error")
 			return
 		}
@@ -168,7 +168,7 @@ func (c PkgInfo) SetAction() {
 		}
 
 		prev.Kind = ""
-		if rs := data.Data.NewWriter(ipapi.DataInfoKey(set.Meta.Name), prev).Commit(); !rs.OK() {
+		if rs := data.Data.NewWriter(ipapi.DataInfoKey(set.Meta.Name), prev).Exec(); !rs.OK() {
 			set.Error = types.NewErrorMeta("500", "Server Error")
 			return
 		}
@@ -210,8 +210,8 @@ func (c PkgInfo) IconAction() {
 	}
 
 	var icon ipapi.PackInfoIcon
-	if rs := data.Data.NewReader(ipapi.DataInfoIconKey(name, icon_type)).Query(); rs.OK() {
-		rs.Decode(&icon)
+	if rs := data.Data.NewReader(ipapi.DataInfoIconKey(name, icon_type)).Exec(); rs.OK() {
+		rs.Item().JsonDecode(&icon)
 		if len(icon.Data) > 10 {
 			bs, err := base64.StdEncoding.DecodeString(icon.Data)
 			if err == nil {
@@ -286,8 +286,8 @@ func (c PkgInfo) IconSetAction() {
 	}
 
 	var info ipapi.PackInfo
-	if rs := data.Data.NewReader(ipapi.DataInfoKey(req.Name)).Query(); rs.OK() {
-		rs.Decode(&info)
+	if rs := data.Data.NewReader(ipapi.DataInfoKey(req.Name)).Exec(); rs.OK() {
+		rs.Item().JsonDecode(&info)
 	}
 	if info.Meta.Name != req.Name {
 		set.Error = types.NewErrorMeta(types.ErrCodeNotFound, "Pack Not Found")
@@ -330,13 +330,13 @@ func (c PkgInfo) IconSetAction() {
 		Data: base64.StdEncoding.EncodeToString(imgbuf.Bytes()),
 	}
 
-	if rs := data.Data.NewWriter(ipapi.DataInfoIconKey(req.Name, req.Type), icon).Commit(); rs.OK() {
+	if rs := data.Data.NewWriter(ipapi.DataInfoIconKey(req.Name, req.Type), icon).Exec(); rs.OK() {
 		set.Kind = "PackInfo"
 
 		info.Images.Set(req.Type)
-		data.Data.NewWriter(ipapi.DataInfoKey(req.Name), info).Commit()
+		data.Data.NewWriter(ipapi.DataInfoKey(req.Name), info).Exec()
 
 	} else {
-		set.Error = types.NewErrorMeta(types.ErrCodeServerError, "Error "+rs.Message)
+		set.Error = types.NewErrorMeta(types.ErrCodeServerError, "Error "+rs.ErrorMessage())
 	}
 }

@@ -64,7 +64,7 @@ func List() error {
 		return err
 	}
 	if ls.Error != nil {
-		return errors.New(ls.Error.Message)
+		return errors.New(ls.Error.ErrorMessage())
 	}
 
 	tbl := uitable.New()
