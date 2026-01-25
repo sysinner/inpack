@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/hooto/hauth/go/hauth/v1"
+	"github.com/hooto/hauth/go"
 	"github.com/hooto/htoml4g/htoml"
 	"github.com/hooto/iam/iamapi"
 	"github.com/hooto/iam/iamclient"

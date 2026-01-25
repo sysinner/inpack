@@ -19,7 +19,7 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"github.com/hooto/hauth/go/hauth/v1"
+	"github.com/hooto/hauth/go"
 	"github.com/sysinner/inpack/internal/ini"
 )
 

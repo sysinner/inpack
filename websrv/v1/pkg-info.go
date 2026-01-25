@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"github.com/disintegration/imaging"
-	"github.com/hooto/hauth/go/hauth/v1"
+	"github.com/hooto/hauth/go"
 	"github.com/hooto/httpsrv"
 	iamdata "github.com/hooto/iam/data"
 	"github.com/hooto/iam/iamapi"

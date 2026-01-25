@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/hooto/hflag4g/hflag"
 	"github.com/lessos/lessgo/encoding/json"
@@ -55,6 +56,15 @@ func Cmd() error {
 	if v, ok := hflag.ValueOK("pack_path"); ok {
 		arg_pack_path = filepath.Clean(v.String())
 	}
+	if arg_pack_path == "" {
+		for _, arg := range os.Args {
+			if strings.HasSuffix(arg, ".txz") {
+				arg_pack_path = arg
+				break
+			}
+		}
+	}
+
 	if arg_pack_path == "" {
 		return fmt.Errorf("Pack Path (--pack_path) Not Found")
 	}
@@ -163,7 +173,7 @@ func Cmd() error {
 			break
 		}
 		if rsp.Error != nil {
-			fmt.Printf(" ERR %s: %s\n", packBuild.Name, rsp.Error.ErrorMessage())
+			fmt.Printf(" ERR %s: %s\n", packBuild.Name, rsp.Error.Message)
 			break
 		}
 

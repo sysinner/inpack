@@ -22,6 +22,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/hooto/hflag4g/hflag"
@@ -52,7 +53,7 @@ var (
 	packSpecFilePrev  = "inpack.spec"
 	build_tempdir     = ".build_tempdir"
 	build_src_tempdir = ".build_src_tempdir"
-	argOutputDir      = ""
+	argOutputDir      = "./"
 	packed_spec_dir   = ".inpack"
 	packed_spec       = packed_spec_dir + "/inpack.json"
 	jscp              = "uglifyjs %s -m -o %s"
@@ -140,6 +141,10 @@ func Cmd() error {
 		default:
 			return fmt.Errorf("invalid --arch")
 		}
+	}
+
+	if dist == "" && runtime.GOOS == "darwin" {
+		dist = "linux"
 	}
 
 	if dist == "" {
@@ -304,6 +309,25 @@ func Cmd() error {
 		specItem.Project.Release = types.Version(v.String())
 	} else if specItem.Project.Release == "" {
 		specItem.Project.Release = "1"
+
+		prefix := filepath.Clean(fmt.Sprintf("%s/%s-%s-",
+			argOutputDir,
+			specItem.Project.Name,
+			specItem.Project.Version))
+
+		suffixName := fmt.Sprintf(".%s.%s", dist, arch)
+
+		files, _ := filepath.Glob(fmt.Sprintf("%s*%s.*", prefix, suffixName))
+		for _, file := range files {
+			if !strings.HasPrefix(file, prefix) {
+				continue
+			}
+			if n := strings.Index(file[len(prefix):], "."); n > 0 {
+				if rel, err := strconv.Atoi(file[len(prefix) : len(prefix)+n]); err == nil && rel >= 1 {
+					specItem.Project.Release = types.Version(fmt.Sprintf("%d", rel+1))
+				}
+			}
+		}
 	}
 
 	//
@@ -376,7 +400,7 @@ Building
 			}
 			os.RemoveAll(build_src_tempdir)
 		} else {
-			fmt.Printf("  Target Pack (%s) already existed\n", target_path)
+			fmt.Printf("Target Pack (%s) already existed\n", target_path)
 		}
 	}
 
@@ -398,8 +422,7 @@ Building
 			target_path = argOutputDir + "/" + target_path
 		}
 		if _, err := os.Stat(target_path); err == nil {
-			fmt.Printf("  Target Pack (%s) already existed\n", target_path)
-			return nil
+			return fmt.Errorf("Target Pack (%s) already existed\n", target_path)
 		}
 	}
 
@@ -486,6 +509,17 @@ Building
 	//
 	if err := json.EncodeToFile(pkg, fmt.Sprintf("%s/%s", build_tempdir, packed_spec), "  "); err != nil {
 		return err
+	}
+
+	if out, err := exec.Command("find", build_tempdir, "-type", "f").Output(); err == nil {
+		fs := strings.Split(strings.TrimSpace(string(out)), "\n")
+		for _, fv := range fs {
+			fv = filepath.Clean(strings.TrimSpace(fv))
+			if strings.HasSuffix(fv, "/.DS_Store") {
+				fmt.Println("  FILE RM", fv)
+				os.Remove(fv)
+			}
+		}
 	}
 
 	if _, ok := hflag.ValueOK("build_nocompress"); !ok {
