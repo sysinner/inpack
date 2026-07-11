@@ -1,6 +1,7 @@
 # inpack
 A package manager for the SysInner
 
+> **Notice:** This project has been migrated to a new home at [github.com/sysinner/innerstack](https://github.com/sysinner/innerstack). Future active development and maintenance will continue at the new location. Please update your references accordingly.
 
 # Installing
 
